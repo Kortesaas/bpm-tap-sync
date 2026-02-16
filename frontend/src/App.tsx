@@ -118,7 +118,7 @@ export default function App() {
     tapReleaseTimerRef.current = window.setTimeout(() => {
       setTapPressed(false);
       tapReleaseTimerRef.current = null;
-    }, 60);
+    }, 55);
   };
 
   const setEntryFromDigits = (nextRaw: string) => {
@@ -165,6 +165,7 @@ export default function App() {
     <>
       <GlobalStyles
         styles={{
+          "*, *::before, *::after": { boxSizing: "border-box" },
           "html, body, #root": {
             width: "100%",
             height: "100%",
@@ -172,9 +173,7 @@ export default function App() {
             padding: 0,
             overflow: "hidden"
           },
-          body: {
-            backgroundColor: "#080d17"
-          }
+          body: { background: "#0f1117" }
         }}
       />
 
@@ -182,51 +181,57 @@ export default function App() {
         sx={{
           position: "fixed",
           inset: 0,
-          width: "100vw",
-          height: "100dvh",
           overflow: "hidden",
           px: "max(8px, env(safe-area-inset-left))",
+          pr: "max(8px, env(safe-area-inset-right))",
           pt: "max(8px, env(safe-area-inset-top))",
           pb: "max(8px, env(safe-area-inset-bottom))",
-          pr: "max(8px, env(safe-area-inset-right))",
-          color: "#d7e1ff",
-          fontFamily: "'IBM Plex Mono', 'JetBrains Mono', 'Consolas', monospace",
-          backgroundColor: "#080d17",
-          backgroundImage:
-            "radial-gradient(80% 60% at 50% 0%, rgba(49,86,158,0.30) 0%, rgba(8,13,23,0) 100%), linear-gradient(rgba(66,98,166,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(66,98,166,0.14) 1px, transparent 1px)",
-          backgroundSize: "100% 100%, 22px 22px, 22px 22px"
+          background: "linear-gradient(180deg, #161b25 0%, #0d1018 100%)",
+          color: "#f0f4ff",
+          fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif"
         }}
       >
         <Stack
-          spacing={1}
+          spacing={0.9}
           sx={{
-            height: "100%",
             width: "100%",
-            p: 1.1,
-            borderRadius: 3,
-            border: "1px solid rgba(120,150,210,0.28)",
-            background: "rgba(7,11,20,0.72)",
-            backdropFilter: "blur(8px)"
+            height: "100%",
+            minWidth: 0,
+            p: 1,
+            borderRadius: 2.4,
+            background: "#161c27",
+            border: "1px solid #2e3647",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)"
           }}
         >
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Typography sx={{ fontSize: 11, letterSpacing: "0.08em", opacity: 0.7 }}>
-              BPM TAP SYNC
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontSize: 11, letterSpacing: "0.08em", opacity: 0.85, fontWeight: 700 }}>
+              BPM CONTROL
             </Typography>
-            <Typography sx={{ fontSize: 11, letterSpacing: "0.08em", opacity: 0.85 }}>
-              {connected ? "LINK OK" : "RECONNECT"}
-            </Typography>
+            <Stack direction="row" spacing={0.6} alignItems="center">
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  bgcolor: connected ? "#36d77e" : "#ff6961",
+                  boxShadow: connected ? "0 0 8px #36d77e" : "0 0 8px #ff6961"
+                }}
+              />
+              <Typography sx={{ fontSize: 11, opacity: 0.85, fontWeight: 700 }}>
+                {connected ? "CONNECTED" : "OFFLINE"}
+              </Typography>
+            </Stack>
           </Stack>
 
           <Typography
             component="h1"
             sx={{
               textAlign: "center",
-              fontWeight: 900,
-              fontSize: "clamp(2.8rem, 14vw, 4.8rem)",
+              fontWeight: 800,
+              fontSize: "clamp(2.6rem, 13vw, 4.6rem)",
               lineHeight: 1,
-              letterSpacing: "0.03em",
-              textShadow: "0 0 14px rgba(101,178,255,0.35)"
+              letterSpacing: "0.02em"
             }}
           >
             {state.round_whole_bpm ? state.bpm.toFixed(0) : state.bpm.toFixed(1)}
@@ -234,12 +239,12 @@ export default function App() {
 
           <Stack
             direction="row"
-            spacing={0.55}
+            spacing={0.5}
             sx={{
               p: 0.45,
-              borderRadius: 1.3,
-              border: "1px solid rgba(121,165,234,0.24)",
-              bgcolor: "rgba(115,138,177,0.08)"
+              borderRadius: 1.1,
+              bgcolor: "#0f141f",
+              border: "1px solid #2a3140"
             }}
           >
             {[1, 2, 3, 4].map((b) => (
@@ -247,17 +252,17 @@ export default function App() {
                 key={b}
                 sx={{
                   flex: 1,
+                  minWidth: 0,
                   height: 8,
                   borderRadius: 1,
-                  bgcolor: state.beat === b ? "#7fd7ff" : "rgba(168,190,227,0.20)",
-                  boxShadow: state.beat === b ? "0 0 9px rgba(127,215,255,0.55)" : "none",
-                  transition: "background-color 80ms linear, box-shadow 100ms linear"
+                  bgcolor: state.beat === b ? "#52b8ff" : "#2d3444",
+                  transition: "background-color 80ms linear"
                 }}
               />
             ))}
           </Stack>
 
-          <Box sx={{ display: "flex", justifyContent: "center", py: 0.35 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 0.2 }}>
             <Box
               component="button"
               type="button"
@@ -266,85 +271,84 @@ export default function App() {
               onPointerLeave={releaseTapVisual}
               onPointerCancel={releaseTapVisual}
               sx={{
-                width: "min(58vw, 230px)",
+                width: "min(56vw, 200px)",
                 aspectRatio: "1 / 1",
                 border: "none",
-                borderRadius: 2.5,
+                borderRadius: 2,
                 cursor: "pointer",
-                color: "#dff2ff",
-                fontSize: "1.85rem",
-                fontWeight: 900,
-                letterSpacing: "0.12em",
+                color: "#ffffff",
+                fontSize: "1.8rem",
+                fontWeight: 800,
+                letterSpacing: "0.08em",
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
                 userSelect: "none",
-                background: tapPressed
-                  ? "linear-gradient(135deg, #5ea9ff 0%, #3e7ed1 100%)"
-                  : "linear-gradient(135deg, #4d8be0 0%, #305f9f 100%)",
+                background: tapPressed ? "#2591ff" : "#3478f6",
                 boxShadow: tapPressed
-                  ? "0 0 0 2px rgba(148,214,255,0.6), 0 3px 18px rgba(84,158,255,0.55)"
-                  : "0 0 0 1px rgba(132,190,255,0.35), 0 8px 24px rgba(58,116,194,0.42)",
+                  ? "inset 0 0 0 2px #94c9ff, 0 1px 8px rgba(37,145,255,0.35)"
+                  : "inset 0 0 0 1px rgba(255,255,255,0.15), 0 8px 20px rgba(0,0,0,0.32)",
                 transform: tapPressed ? "scale(0.985)" : "scale(1)",
-                transition: "transform 35ms linear, box-shadow 60ms linear, background 60ms linear"
+                transition: "transform 35ms linear, background-color 55ms linear, box-shadow 55ms linear"
               }}
             >
               TAP
             </Box>
           </Box>
 
-          <Box sx={{ px: 0.2 }}>
-            <Slider
-              min={60}
-              max={200}
-              step={state.round_whole_bpm ? 1 : 0.1}
-              value={state.bpm}
-              valueLabelDisplay="auto"
-              onChange={(_, value) =>
-                send({ type: "set_bpm", bpm: Array.isArray(value) ? value[0] : value })
-              }
-              sx={{
-                py: 0.8,
-                color: "#83d3ff",
-                "& .MuiSlider-thumb": {
-                  width: 22,
-                  height: 22,
-                  boxShadow: "0 0 0 4px rgba(131,211,255,0.2)"
-                },
-                "& .MuiSlider-track, & .MuiSlider-rail": {
-                  height: 7,
-                  borderRadius: 8
-                }
-              }}
-            />
-          </Box>
-
-          <Box
+          <Slider
+            min={60}
+            max={200}
+            step={state.round_whole_bpm ? 1 : 0.1}
+            value={state.bpm}
+            valueLabelDisplay="auto"
+            onChange={(_, value) =>
+              send({ type: "set_bpm", bpm: Array.isArray(value) ? value[0] : value })
+            }
             sx={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: 0.8
+              py: 0.5,
+              color: "#67c3ff",
+              "& .MuiSlider-thumb": { width: 22, height: 22 },
+              "& .MuiSlider-track, & .MuiSlider-rail": { height: 6, borderRadius: 8 }
             }}
-          >
+          />
+
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 0.7 }}>
             <Button
               variant="outlined"
               onClick={() => send({ type: "resync" })}
-              sx={{ minHeight: 42, fontWeight: 800, fontSize: "0.8rem" }}
+              sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
             >
               RESYNC
             </Button>
             <Button
-              variant="outlined"
+              variant={state.metronome ? "contained" : "outlined"}
               onClick={() => send({ type: "toggle_metronome" })}
-              sx={{ minHeight: 42, fontWeight: 800, fontSize: "0.8rem" }}
+              sx={{
+                minHeight: 40,
+                minWidth: 0,
+                fontWeight: 700,
+                borderColor: "#4a5469",
+                color: state.metronome ? "#ffffff" : "#e5ecff",
+                bgcolor: state.metronome ? "#18a367" : "transparent",
+                "&:hover": { bgcolor: state.metronome ? "#168d5a" : "rgba(255,255,255,0.04)" }
+              }}
             >
-              METRO TOGGLE
+              METRO {state.metronome ? "ON" : "OFF"}
             </Button>
             <Button
               variant={state.round_whole_bpm ? "contained" : "outlined"}
               onClick={() => send({ type: "toggle_bpm_rounding" })}
-              sx={{ minHeight: 42, fontWeight: 800, fontSize: "0.8rem", gridColumn: "1 / -1" }}
+              sx={{
+                minHeight: 40,
+                minWidth: 0,
+                fontWeight: 700,
+                borderColor: "#4a5469",
+                color: state.round_whole_bpm ? "#ffffff" : "#e5ecff",
+                bgcolor: state.round_whole_bpm ? "#6a58e5" : "transparent",
+                "&:hover": { bgcolor: state.round_whole_bpm ? "#5d4dcc" : "rgba(255,255,255,0.04)" }
+              }}
             >
-              ROUND BPM
+              ROUND {state.round_whole_bpm ? "ON" : "OFF"}
             </Button>
           </Box>
 
@@ -352,7 +356,7 @@ export default function App() {
             sx={{
               display: "grid",
               gridTemplateColumns: `repeat(${nudgeButtons.length}, minmax(0, 1fr))`,
-              gap: 0.8
+              gap: 0.7
             }}
           >
             {nudgeButtons.map((item) => (
@@ -360,70 +364,64 @@ export default function App() {
                 key={item.label}
                 variant="outlined"
                 onClick={() => send({ type: "nudge", delta: item.delta })}
-                sx={{ minHeight: 42, fontWeight: 800 }}
+                sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
               >
                 {item.label}
               </Button>
             ))}
           </Box>
 
-          <Stack spacing={0.6} sx={{ mt: "auto" }}>
-            <Typography sx={{ fontSize: 11, opacity: 0.8, letterSpacing: "0.08em" }}>
-              CUSTOM BPM INPUT
+          <Box sx={{ mt: "auto", minWidth: 0 }}>
+            <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", opacity: 0.75, mb: 0.5 }}>
+              DIRECT BPM INPUT
             </Typography>
-            <Box
-              sx={{
-                minHeight: 42,
-                px: 1.2,
-                borderRadius: 1.5,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                border: "1px solid rgba(121,165,234,0.24)",
-                bgcolor: "rgba(115,138,177,0.08)"
-              }}
-            >
-              <Typography sx={{ fontSize: 22, fontWeight: 900, letterSpacing: "0.08em" }}>
-                {bpmEntry || "---"}
-              </Typography>
-              <Typography sx={{ fontSize: 11, opacity: 0.7 }}>BPM</Typography>
-            </Box>
 
             <Box
               sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                gap: 0.75
+                minHeight: 38,
+                px: 1,
+                mb: 0.7,
+                borderRadius: 1.3,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                bgcolor: "#0f141f",
+                border: "1px solid #2a3140"
               }}
             >
+              <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{bpmEntry || "---"}</Typography>
+              <Typography sx={{ fontSize: 11, opacity: 0.7 }}>BPM</Typography>
+            </Box>
+
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 0.7 }}>
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
                 <Button
                   key={digit}
                   variant="outlined"
                   onPointerDown={() => appendDigit(digit)}
-                  sx={{ minHeight: 44, fontWeight: 900, fontSize: "1rem" }}
+                  sx={{ minHeight: 42, minWidth: 0, fontSize: "1rem", fontWeight: 800, borderColor: "#4a5469", color: "#f1f5ff" }}
                 >
                   {digit}
                 </Button>
               ))}
-              <Button variant="outlined" onPointerDown={clearEntry} sx={{ minHeight: 44, fontWeight: 800 }}>
+              <Button variant="outlined" onPointerDown={clearEntry} sx={{ minHeight: 42, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#f1f5ff" }}>
                 CLR
               </Button>
-              <Button variant="outlined" onPointerDown={() => appendDigit("0")} sx={{ minHeight: 44, fontWeight: 900, fontSize: "1rem" }}>
+              <Button variant="outlined" onPointerDown={() => appendDigit("0")} sx={{ minHeight: 42, minWidth: 0, fontSize: "1rem", fontWeight: 800, borderColor: "#4a5469", color: "#f1f5ff" }}>
                 0
               </Button>
-              <Button variant="outlined" onPointerDown={backspaceEntry} sx={{ minHeight: 44, fontWeight: 800 }}>
+              <Button variant="outlined" onPointerDown={backspaceEntry} sx={{ minHeight: 42, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#f1f5ff" }}>
                 DEL
               </Button>
               <Button
                 variant="contained"
                 onPointerDown={applyEntry}
-                sx={{ minHeight: 46, fontWeight: 900, gridColumn: "1 / -1" }}
+                sx={{ minHeight: 44, minWidth: 0, fontWeight: 800, gridColumn: "1 / -1", bgcolor: "#3478f6" }}
               >
                 SET BPM
               </Button>
             </Box>
-          </Stack>
+          </Box>
         </Stack>
       </Box>
     </>
