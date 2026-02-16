@@ -276,6 +276,11 @@ async def ws_endpoint(ws: WebSocket):
                         resync_send_zero=resync_send_zero,
                     )
                     await _broadcast_settings_async()
+                elif t == "test_heavym_bpm":
+                    bpm = _coerce_float(msg.get("bpm", 120.0))
+                    outputs.set_bpm_for_target("heavym", bpm)
+                elif t == "test_heavym_sync":
+                    outputs.trigger_resync_for_target("heavym")
                 elif t == "get_settings":
                     await ws.send_json(_settings_payload())
                 else:

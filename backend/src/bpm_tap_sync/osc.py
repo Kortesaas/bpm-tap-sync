@@ -191,6 +191,15 @@ class Outputs:
             return
         raise ValueError(f"Unknown OSC target: {name}")
 
+    def trigger_resync_for_target(self, name: str):
+        if name == "resolume":
+            self.resolume.send("/composition/tempocontroller/resync", 1)
+            return
+        if name == "heavym":
+            self._send_heavym_resync()
+            return
+        raise ValueError(f"Unknown OSC target: {name}")
+
     def _send_ma3_bpm(self, bpm_value: int | float):
         # MA3: command line via OSC.
         # You will likely change this string to match your showfile.
@@ -207,6 +216,9 @@ class Outputs:
 
     def resync(self):
         self.resolume.send("/composition/tempocontroller/resync", 1)
+        self._send_heavym_resync()
+
+    def _send_heavym_resync(self):
         self.heavym.send(self.heavym_resync_address, float(self.heavym_resync_value))
         if self.heavym_resync_send_zero:
             self.heavym.send(self.heavym_resync_address, 0.0)

@@ -58,6 +58,8 @@ type ControlMsg =
       bpm_max: number;
       resync_value: number;
     }
+  | { type: "test_heavym_bpm"; bpm: number }
+  | { type: "test_heavym_sync" }
   | { type: "get_settings" };
 
 type ViewMode = "live" | "settings";
@@ -344,6 +346,14 @@ export default function App() {
       bpm_max: bpmMax,
       resync_value: resyncValue
     });
+  };
+
+  const sendHeavymTestBpm = () => {
+    send({ type: "test_heavym_bpm", bpm: state.bpm });
+  };
+
+  const sendHeavymTestSync = () => {
+    send({ type: "test_heavym_sync" });
   };
 
   return (
@@ -962,6 +972,44 @@ export default function App() {
                                 "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
                               }}
                             />
+                            <Stack direction="row" spacing={0.8}>
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={sendHeavymTestBpm}
+                                sx={{
+                                  minHeight: 41,
+                                  fontWeight: 900,
+                                  letterSpacing: "0.02em",
+                                  color: "#f1f6ff",
+                                  bgcolor: "#2d4062",
+                                  border: "1px solid #5671a0",
+                                  boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
+                                  "&:hover": { bgcolor: "#35507a" },
+                                  "&:active": { transform: "translateY(1px)" }
+                                }}
+                              >
+                                TEST BPM MSG
+                              </Button>
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                onClick={sendHeavymTestSync}
+                                sx={{
+                                  minHeight: 41,
+                                  fontWeight: 900,
+                                  letterSpacing: "0.02em",
+                                  color: "#f1f6ff",
+                                  bgcolor: "#2d4062",
+                                  border: "1px solid #5671a0",
+                                  boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
+                                  "&:hover": { bgcolor: "#35507a" },
+                                  "&:active": { transform: "translateY(1px)" }
+                                }}
+                              >
+                                TEST SYNC MSG
+                              </Button>
+                            </Stack>
                             <Button
                               fullWidth
                               variant="contained"
