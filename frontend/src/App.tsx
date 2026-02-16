@@ -75,6 +75,44 @@ type ControlMsg =
   | { type: "get_settings" };
 
 type ViewMode = "live" | "settings";
+type SkinName = "tech" | "pink" | "ice" | "black_dark" | "black_light" | "white_dark" | "white_light";
+
+type SkinPalette = {
+  label: string;
+  bodyBg: string;
+  shellGradient: string;
+  panelBg: string;
+  panelBorder: string;
+  cardBg: string;
+  cardBorder: string;
+  insetBg: string;
+  insetBorder: string;
+  text: string;
+  textMuted: string;
+  iconButtonBg: string;
+  iconButtonBorder: string;
+  iconButtonActiveBg: string;
+  iconButtonHoverBg: string;
+  liveAccent: string;
+  liveAccentStrong: string;
+  beatOff: string;
+  buttonSurface: string;
+  buttonSurfaceBorder: string;
+  buttonSurfaceHover: string;
+  buttonPrimary: string;
+  buttonPrimaryHover: string;
+  tapIdle: string;
+  tapPressed: string;
+  tapGlow: string;
+  slider: string;
+  deactivate: string;
+  deactivateBorder: string;
+  deactivateHover: string;
+  activate: string;
+  activateBorder: string;
+  activateHover: string;
+  outputAccents: Record<OutputName, string>;
+};
 
 function wsUrl() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -87,16 +125,306 @@ const OUTPUT_LABELS: Record<OutputName, string> = {
   heavym: "HeavyM"
 };
 
-const OUTPUT_ACCENTS: Record<OutputName, string> = {
-  ma3: "#f2f6ff",
-  resolume: "#6ee6a1",
-  heavym: "#ffb66a"
+const SKIN_STORAGE_KEY = "bpm-tap-sync:skin";
+
+const SKINS: Record<SkinName, SkinPalette> = {
+  tech: {
+    label: "Tech Blue",
+    bodyBg: "#0f1117",
+    shellGradient: "linear-gradient(180deg, #161b25 0%, #0d1018 100%)",
+    panelBg: "#161c27",
+    panelBorder: "#2e3647",
+    cardBg: "#101723",
+    cardBorder: "#2f3a4f",
+    insetBg: "#0d141f",
+    insetBorder: "#2f3a4f",
+    text: "#f0f4ff",
+    textMuted: "#9aabcf",
+    iconButtonBg: "#111723",
+    iconButtonBorder: "#4a5469",
+    iconButtonActiveBg: "#6a58e5",
+    iconButtonHoverBg: "#171f2d",
+    liveAccent: "#52b8ff",
+    liveAccentStrong: "#67c3ff",
+    beatOff: "#2d3444",
+    buttonSurface: "#1a2334",
+    buttonSurfaceBorder: "#6d81a8",
+    buttonSurfaceHover: "#1f2b40",
+    buttonPrimary: "#2d4062",
+    buttonPrimaryHover: "#35507a",
+    tapIdle: "#67c3ff",
+    tapPressed: "#67c3ff",
+    tapGlow: "#d8f0ff",
+    slider: "#67c3ff",
+    deactivate: "#cf334a",
+    deactivateBorder: "#de5d70",
+    deactivateHover: "#b92d42",
+    activate: "#1c9b66",
+    activateBorder: "#46bf8b",
+    activateHover: "#188355",
+    outputAccents: {
+      ma3: "#f2f6ff",
+      resolume: "#ffb66a",
+      heavym: "#6ee6a1"
+    }
+  },
+  pink: {
+    label: "Neon Pink",
+    bodyBg: "#160d19",
+    shellGradient: "linear-gradient(180deg, #2b102a 0%, #170d1e 100%)",
+    panelBg: "#27142c",
+    panelBorder: "#5b2f63",
+    cardBg: "#220f2a",
+    cardBorder: "#5b2f63",
+    insetBg: "#1a0d22",
+    insetBorder: "#5b2f63",
+    text: "#ffeefb",
+    textMuted: "#e3afd6",
+    iconButtonBg: "#211128",
+    iconButtonBorder: "#a84da8",
+    iconButtonActiveBg: "#d34db2",
+    iconButtonHoverBg: "#2a1431",
+    liveAccent: "#ff8cd7",
+    liveAccentStrong: "#ff4fb8",
+    beatOff: "#503050",
+    buttonSurface: "#3a1f43",
+    buttonSurfaceBorder: "#c86fb5",
+    buttonSurfaceHover: "#47254f",
+    buttonPrimary: "#8e3e89",
+    buttonPrimaryHover: "#a3499c",
+    tapIdle: "#ff4fb8",
+    tapPressed: "#ff3ea7",
+    tapGlow: "#ffd1ef",
+    slider: "#ff7ccc",
+    deactivate: "#cf334a",
+    deactivateBorder: "#de5d70",
+    deactivateHover: "#b92d42",
+    activate: "#b3459c",
+    activateBorder: "#cc73b8",
+    activateHover: "#9d3d89",
+    outputAccents: {
+      ma3: "#ffffff",
+      resolume: "#6ee6a1",
+      heavym: "#ffb66a"
+    }
+  },
+  ice: {
+    label: "Ice Mint",
+    bodyBg: "#091519",
+    shellGradient: "linear-gradient(180deg, #0f2128 0%, #081217 100%)",
+    panelBg: "#102028",
+    panelBorder: "#2c5a63",
+    cardBg: "#0d1a22",
+    cardBorder: "#2d5b64",
+    insetBg: "#0a141b",
+    insetBorder: "#2d5b64",
+    text: "#e7f9ff",
+    textMuted: "#9bcdd8",
+    iconButtonBg: "#0e1a22",
+    iconButtonBorder: "#467886",
+    iconButtonActiveBg: "#3fa5bc",
+    iconButtonHoverBg: "#12212a",
+    liveAccent: "#71e7ff",
+    liveAccentStrong: "#3fcde8",
+    beatOff: "#2a4650",
+    buttonSurface: "#15303a",
+    buttonSurfaceBorder: "#4d95a5",
+    buttonSurfaceHover: "#1a3a45",
+    buttonPrimary: "#2d7180",
+    buttonPrimaryHover: "#368698",
+    tapIdle: "#3fcde8",
+    tapPressed: "#31bad5",
+    tapGlow: "#bdf5ff",
+    slider: "#71e7ff",
+    deactivate: "#bf4a5f",
+    deactivateBorder: "#d57686",
+    deactivateHover: "#aa4054",
+    activate: "#2d7180",
+    activateBorder: "#4d95a5",
+    activateHover: "#368698",
+    outputAccents: {
+      ma3: "#ffffff",
+      resolume: "#ffb66a",
+      heavym: "#6ee6a1"
+    }
+  },
+  black_dark: {
+    label: "Black Dark",
+    bodyBg: "#050505",
+    shellGradient: "linear-gradient(180deg, #101010 0%, #060606 100%)",
+    panelBg: "#121212",
+    panelBorder: "#2f2f2f",
+    cardBg: "#171717",
+    cardBorder: "#343434",
+    insetBg: "#0d0d0d",
+    insetBorder: "#303030",
+    text: "#f5f5f5",
+    textMuted: "#b6b6b6",
+    iconButtonBg: "#111111",
+    iconButtonBorder: "#4a4a4a",
+    iconButtonActiveBg: "#6c6c6c",
+    iconButtonHoverBg: "#1b1b1b",
+    liveAccent: "#f0f0f0",
+    liveAccentStrong: "#cfcfcf",
+    beatOff: "#2b2b2b",
+    buttonSurface: "#1b1b1b",
+    buttonSurfaceBorder: "#5a5a5a",
+    buttonSurfaceHover: "#242424",
+    buttonPrimary: "#333333",
+    buttonPrimaryHover: "#414141",
+    tapIdle: "#3f3f3f",
+    tapPressed: "#565656",
+    tapGlow: "#f3f3f3",
+    slider: "#e7e7e7",
+    deactivate: "#cf334a",
+    deactivateBorder: "#de5d70",
+    deactivateHover: "#b92d42",
+    activate: "#4e4e4e",
+    activateBorder: "#6d6d6d",
+    activateHover: "#5b5b5b",
+    outputAccents: {
+      ma3: "#ffffff",
+      resolume: "#dcdcdc",
+      heavym: "#a9a9a9"
+    }
+  },
+  black_light: {
+    label: "Black Light",
+    bodyBg: "#dcdcdc",
+    shellGradient: "linear-gradient(180deg, #f6f6f6 0%, #e3e3e3 100%)",
+    panelBg: "#fdfdfd",
+    panelBorder: "#b5b5b5",
+    cardBg: "#f6f6f6",
+    cardBorder: "#bbbbbb",
+    insetBg: "#efefef",
+    insetBorder: "#b3b3b3",
+    text: "#101010",
+    textMuted: "#5a5a5a",
+    iconButtonBg: "#f4f4f4",
+    iconButtonBorder: "#6f6f6f",
+    iconButtonActiveBg: "#4a4a4a",
+    iconButtonHoverBg: "#e9e9e9",
+    liveAccent: "#2f2f2f",
+    liveAccentStrong: "#202020",
+    beatOff: "#cfcfcf",
+    buttonSurface: "#f0f0f0",
+    buttonSurfaceBorder: "#7b7b7b",
+    buttonSurfaceHover: "#e4e4e4",
+    buttonPrimary: "#d9d9d9",
+    buttonPrimaryHover: "#cccccc",
+    tapIdle: "#3d3d3d",
+    tapPressed: "#2a2a2a",
+    tapGlow: "#ffffff",
+    slider: "#1f1f1f",
+    deactivate: "#cf334a",
+    deactivateBorder: "#de5d70",
+    deactivateHover: "#b92d42",
+    activate: "#2e2e2e",
+    activateBorder: "#5c5c5c",
+    activateHover: "#202020",
+    outputAccents: {
+      ma3: "#1a1a1a",
+      resolume: "#2f2f2f",
+      heavym: "#5a5a5a"
+    }
+  },
+  white_dark: {
+    label: "White Dark",
+    bodyBg: "#0a0a0a",
+    shellGradient: "linear-gradient(180deg, #1b1b1b 0%, #0d0d0d 100%)",
+    panelBg: "#171717",
+    panelBorder: "#4d4d4d",
+    cardBg: "#1d1d1d",
+    cardBorder: "#4f4f4f",
+    insetBg: "#121212",
+    insetBorder: "#474747",
+    text: "#ffffff",
+    textMuted: "#cdcdcd",
+    iconButtonBg: "#171717",
+    iconButtonBorder: "#686868",
+    iconButtonActiveBg: "#f0f0f0",
+    iconButtonHoverBg: "#222222",
+    liveAccent: "#ffffff",
+    liveAccentStrong: "#f2f2f2",
+    beatOff: "#353535",
+    buttonSurface: "#242424",
+    buttonSurfaceBorder: "#7d7d7d",
+    buttonSurfaceHover: "#2d2d2d",
+    buttonPrimary: "#3a3a3a",
+    buttonPrimaryHover: "#4a4a4a",
+    tapIdle: "#4d4d4d",
+    tapPressed: "#636363",
+    tapGlow: "#ffffff",
+    slider: "#ffffff",
+    deactivate: "#cf334a",
+    deactivateBorder: "#de5d70",
+    deactivateHover: "#b92d42",
+    activate: "#e8e8e8",
+    activateBorder: "#ffffff",
+    activateHover: "#cfcfcf",
+    outputAccents: {
+      ma3: "#ffffff",
+      resolume: "#e8e8e8",
+      heavym: "#bfbfbf"
+    }
+  },
+  white_light: {
+    label: "White Light",
+    bodyBg: "#efefef",
+    shellGradient: "linear-gradient(180deg, #ffffff 0%, #f1f1f1 100%)",
+    panelBg: "#ffffff",
+    panelBorder: "#cdcdcd",
+    cardBg: "#fafafa",
+    cardBorder: "#d0d0d0",
+    insetBg: "#f3f3f3",
+    insetBorder: "#c8c8c8",
+    text: "#111111",
+    textMuted: "#666666",
+    iconButtonBg: "#f9f9f9",
+    iconButtonBorder: "#7a7a7a",
+    iconButtonActiveBg: "#1f1f1f",
+    iconButtonHoverBg: "#eeeeee",
+    liveAccent: "#181818",
+    liveAccentStrong: "#111111",
+    beatOff: "#dddddd",
+    buttonSurface: "#f5f5f5",
+    buttonSurfaceBorder: "#8a8a8a",
+    buttonSurfaceHover: "#ebebeb",
+    buttonPrimary: "#e5e5e5",
+    buttonPrimaryHover: "#dadada",
+    tapIdle: "#181818",
+    tapPressed: "#050505",
+    tapGlow: "#ffffff",
+    slider: "#101010",
+    deactivate: "#cf334a",
+    deactivateBorder: "#de5d70",
+    deactivateHover: "#b92d42",
+    activate: "#1d1d1d",
+    activateBorder: "#555555",
+    activateHover: "#090909",
+    outputAccents: {
+      ma3: "#151515",
+      resolume: "#323232",
+      heavym: "#666666"
+    }
+  }
 };
+
+const SKIN_CHOICES: SkinName[] = ["tech", "pink", "ice", "black_dark", "black_light", "white_dark", "white_light"];
 
 const MA3_EXTRA_MASTERS = Array.from({ length: 15 }, (_, i) => `3.${i + 1}`);
 
 export default function App() {
   const [view, setView] = useState<ViewMode>("live");
+  const [skinName, setSkinName] = useState<SkinName>(() => {
+    try {
+      const stored = localStorage.getItem(SKIN_STORAGE_KEY);
+      if (stored && stored in SKINS) return stored as SkinName;
+    } catch {
+      // Ignore storage access issues.
+    }
+    return "tech";
+  });
   const [state, setState] = useState<StateMsg>({
     type: "state",
     bpm: 120,
@@ -171,6 +499,17 @@ export default function App() {
           ],
     [settings.round_whole_bpm]
   );
+  const skin = SKINS[skinName];
+  const activeButtonText = skinName === "black_light" || skinName === "white_light" ? "#f7f7f7" : skin.text;
+  const tapButtonText = skinName === "black_light" || skinName === "white_light" ? "#ffffff" : skin.text;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SKIN_STORAGE_KEY, skinName);
+    } catch {
+      // Ignore storage access issues.
+    }
+  }, [skinName]);
 
   useEffect(() => {
     let closedByApp = false;
@@ -446,6 +785,25 @@ export default function App() {
     send({ type: "test_heavym_sync" });
   };
 
+  const inputFieldSx = {
+    minWidth: 0,
+    "& .MuiInputBase-input": { color: skin.text },
+    "& .MuiInputLabel-root": { color: skin.textMuted },
+    "& .MuiOutlinedInput-root fieldset": { borderColor: skin.iconButtonBorder }
+  };
+
+  const saveButtonSx = {
+    minHeight: 41,
+    fontWeight: 900,
+    letterSpacing: "0.02em",
+    color: skin.text,
+    bgcolor: skin.buttonPrimary,
+    border: `1px solid ${skin.buttonSurfaceBorder}`,
+    boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
+    "&:hover": { bgcolor: skin.buttonPrimaryHover },
+    "&:active": { transform: "translateY(1px)" }
+  };
+
   return (
     <>
       <GlobalStyles
@@ -458,7 +816,28 @@ export default function App() {
             padding: 0,
             overflow: "hidden"
           },
-          body: { background: "#0f1117" }
+          body: { background: skin.bodyBg },
+          ".MuiButtonBase-root": {
+            WebkitTapHighlightColor: "transparent"
+          },
+          ".MuiButton-outlined": {
+            borderColor: `${skin.iconButtonBorder} !important`
+          },
+          ".MuiButton-outlined:hover": {
+            borderColor: `${skin.iconButtonBorder} !important`
+          },
+          ".MuiButtonBase-root:focus": {
+            outline: "none"
+          },
+          ".MuiButtonBase-root:focus-visible": {
+            outline: "none"
+          },
+          ".MuiButtonBase-root.Mui-focusVisible": {
+            boxShadow: `0 0 0 2px ${skin.iconButtonBorder}`
+          },
+          ".MuiTouchRipple-root .MuiTouchRipple-child": {
+            backgroundColor: `${skin.liveAccentStrong} !important`
+          }
         }}
       />
 
@@ -474,8 +853,8 @@ export default function App() {
           pr: "max(8px, env(safe-area-inset-right))",
           pt: "max(8px, env(safe-area-inset-top))",
           pb: "max(8px, env(safe-area-inset-bottom))",
-          background: "linear-gradient(180deg, #161b25 0%, #0d1018 100%)",
-          color: "#f0f4ff",
+          background: skin.shellGradient,
+          color: skin.text,
           fontFamily: "'Space Grotesk', 'Segoe UI', sans-serif"
         }}
       >
@@ -488,8 +867,8 @@ export default function App() {
             minWidth: 0,
             p: 1,
             borderRadius: 2.4,
-            background: "#161c27",
-            border: "1px solid #2e3647",
+            background: skin.panelBg,
+            border: `1px solid ${skin.panelBorder}`,
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
             "@media (min-width: 1024px) and (pointer: fine)": {
               "--desktop-content-scale": "clamp(0.78, calc((100dvh - 24px) / 940), 1)",
@@ -513,8 +892,8 @@ export default function App() {
                   display: "flex",
                   alignItems: "center",
                   gap: 0.6,
-                  border: "1px solid #3c4558",
-                  bgcolor: "#111723"
+                  border: `1px solid ${skin.iconButtonBorder}`,
+                  bgcolor: skin.iconButtonBg
                 }}
               >
                 <Box
@@ -539,15 +918,23 @@ export default function App() {
                   height: 34,
                   p: 0,
                   borderRadius: 1,
-                  borderColor: "#4a5469",
-                  bgcolor: view === "settings" ? "#6a58e5" : "#111723",
-                  "&:hover": { bgcolor: view === "settings" ? "#5d4dcc" : "#171f2d" }
+                  borderColor: skin.iconButtonBorder,
+                  bgcolor: view === "settings" ? skin.iconButtonActiveBg : skin.iconButtonBg,
+                  "&:hover": { bgcolor: view === "settings" ? skin.iconButtonActiveBg : skin.iconButtonHoverBg }
                 }}
               >
                 <Box sx={{ width: 16, display: "grid", gap: 0.35 }}>
-                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: "#e5ecff", width: "100%" }} />
-                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: "#e5ecff", width: "72%", justifySelf: "end" }} />
-                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: "#e5ecff", width: "86%" }} />
+                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: view === "settings" ? activeButtonText : skin.text, width: "100%" }} />
+                  <Box
+                    sx={{
+                      height: 2,
+                      borderRadius: 2,
+                      bgcolor: view === "settings" ? activeButtonText : skin.text,
+                      width: "72%",
+                      justifySelf: "end"
+                    }}
+                  />
+                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: view === "settings" ? activeButtonText : skin.text, width: "86%" }} />
                 </Box>
               </Button>
             </Stack>
@@ -601,8 +988,8 @@ export default function App() {
                   sx={{
                     p: 0.45,
                     borderRadius: 1.1,
-                    bgcolor: "#0f141f",
-                    border: "1px solid #2a3140"
+                    bgcolor: skin.insetBg,
+                    border: `1px solid ${skin.insetBorder}`
                   }}
                 >
                   {[1, 2, 3, 4].map((b) => (
@@ -613,7 +1000,7 @@ export default function App() {
                         minWidth: 0,
                         height: 8,
                         borderRadius: 1,
-                        bgcolor: state.beat === b ? "#52b8ff" : "#2d3444",
+                        bgcolor: state.beat === b ? skin.liveAccent : skin.beatOff,
                         transition: "background-color 80ms linear"
                       }}
                     />
@@ -637,22 +1024,27 @@ export default function App() {
                       border: "none",
                       borderRadius: 2,
                       cursor: "pointer",
-                      color: "#ffffff",
+                      color: tapButtonText,
                       fontSize: "1.8rem",
                       fontWeight: 800,
                       letterSpacing: "0.08em",
                       touchAction: "manipulation",
                       WebkitTapHighlightColor: "transparent",
                       userSelect: "none",
-                      background: tapPressed ? "#2591ff" : "#3478f6",
+                      background: tapPressed ? skin.tapPressed : skin.tapIdle,
                       boxShadow: tapPressed
-                        ? "inset 0 0 0 2px #b5dbff, 0 1px 10px rgba(37,145,255,0.42)"
+                        ? `inset 0 0 0 2px ${skin.tapGlow}, 0 1px 10px rgba(0,0,0,0.35)`
                         : "inset 0 0 0 1px rgba(255,255,255,0.18), 0 8px 20px rgba(0,0,0,0.32)",
                       transform: tapPressed ? "scale(0.976)" : "scale(1)",
                       transition: "transform 24ms linear, background-color 42ms linear, box-shadow 42ms linear",
                       "@keyframes tapPulseRing": {
                         "0%": { transform: "scale(0.88)", opacity: 0.55 },
                         "100%": { transform: "scale(1.08)", opacity: 0 }
+                      },
+                      "@keyframes tapLabelBounce": {
+                        "0%": { transform: "translateY(0px) scale(1)" },
+                        "30%": { transform: "translateY(1px) scale(0.95)" },
+                        "100%": { transform: "translateY(0px) scale(1)" }
                       },
                       willChange: "transform, background-color, box-shadow"
                     }}
@@ -663,12 +1055,24 @@ export default function App() {
                         position: "absolute",
                         inset: 0,
                         borderRadius: "inherit",
-                        border: "2px solid rgba(215,237,255,0.82)",
+                        border: `2px solid ${skin.tapGlow}`,
                         pointerEvents: "none",
                         animation: "tapPulseRing 190ms ease-out"
                       }}
                     />
-                    TAP
+                    <Box
+                      component="span"
+                      key={tapPulseId}
+                      sx={{
+                        display: "inline-block",
+                        animation: tapPulseId > 0 ? "tapLabelBounce 160ms cubic-bezier(0.22, 0.72, 0.31, 1)" : "none",
+                        transform: tapPressed ? "translateY(1px) scale(0.96)" : "translateY(0px) scale(1)",
+                        transition: "transform 42ms linear",
+                        willChange: "transform"
+                      }}
+                    >
+                      TAP
+                    </Box>
                   </Box>
                 </Box>
 
@@ -683,7 +1087,7 @@ export default function App() {
                   }
                   sx={{
                     py: 0.5,
-                    color: "#67c3ff",
+                    color: skin.slider,
                     "& .MuiSlider-thumb": { width: 22, height: 22 },
                     "& .MuiSlider-track, & .MuiSlider-rail": { height: 6, borderRadius: 8 }
                   }}
@@ -697,10 +1101,10 @@ export default function App() {
                       minHeight: 78,
                       minWidth: 0,
                       fontWeight: 800,
-                      borderColor: "#4a5469",
-                      color: "#e5ecff",
-                      bgcolor: resyncPressed ? "#3478f6" : "transparent",
-                      "&:hover": { bgcolor: resyncPressed ? "#2c68d6" : "rgba(255,255,255,0.04)" }
+                      borderColor: skin.iconButtonBorder,
+                      color: skin.text,
+                      bgcolor: resyncPressed ? skin.liveAccentStrong : "transparent",
+                      "&:hover": { bgcolor: resyncPressed ? skin.liveAccentStrong : "rgba(255,255,255,0.04)" }
                     }}
                   >
                     RESYNC
@@ -712,10 +1116,10 @@ export default function App() {
                       minHeight: 78,
                       minWidth: 0,
                       fontWeight: 800,
-                      borderColor: "#4a5469",
-                      color: "#e5ecff",
-                      bgcolor: metroPressed ? "#18a367" : "transparent",
-                      "&:hover": { bgcolor: metroPressed ? "#168d5a" : "rgba(255,255,255,0.04)" }
+                      borderColor: skin.iconButtonBorder,
+                      color: skin.text,
+                      bgcolor: metroPressed ? skin.liveAccentStrong : "transparent",
+                      "&:hover": { bgcolor: metroPressed ? skin.liveAccentStrong : "rgba(255,255,255,0.04)" }
                     }}
                   >
                     METRO TOGGLE
@@ -732,14 +1136,14 @@ export default function App() {
                   <Button
                     variant="outlined"
                     onClick={() => send({ type: "set_bpm", bpm: state.bpm / 2 })}
-                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
+                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: skin.iconButtonBorder, color: skin.text }}
                   >
                     /2
                   </Button>
                   <Button
                     variant="outlined"
                     onClick={() => send({ type: "set_bpm", bpm: state.bpm * 2 })}
-                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
+                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: skin.iconButtonBorder, color: skin.text }}
                   >
                     *2
                   </Button>
@@ -748,7 +1152,7 @@ export default function App() {
                       key={item.label}
                       variant="outlined"
                       onClick={() => send({ type: "nudge", delta: item.delta })}
-                      sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
+                      sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: skin.iconButtonBorder, color: skin.text }}
                     >
                       {item.label}
                     </Button>
@@ -769,8 +1173,8 @@ export default function App() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      bgcolor: "#111b2a",
-                      border: "1px solid #4b5a79",
+                      bgcolor: skin.insetBg,
+                      border: `1px solid ${skin.buttonSurfaceBorder}`,
                       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)"
                     }}
                   >
@@ -789,11 +1193,11 @@ export default function App() {
                           minWidth: 0,
                           fontSize: "1.06rem",
                           fontWeight: 900,
-                          borderColor: "#6d81a8",
-                          color: "#ffffff",
-                          bgcolor: "#1a2334",
+                          borderColor: skin.buttonSurfaceBorder,
+                          color: skin.text,
+                          bgcolor: skin.buttonSurface,
                           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
-                          "&:hover": { bgcolor: "#1f2b40" }
+                          "&:hover": { bgcolor: skin.buttonSurfaceHover }
                         }}
                       >
                         {digit}
@@ -806,10 +1210,10 @@ export default function App() {
                         minHeight: 48,
                         minWidth: 0,
                         fontWeight: 800,
-                        borderColor: "#6d81a8",
-                        color: "#ffffff",
-                        bgcolor: "#1a2334",
-                        "&:hover": { bgcolor: "#1f2b40" }
+                        borderColor: skin.buttonSurfaceBorder,
+                        color: skin.text,
+                        bgcolor: skin.buttonSurface,
+                        "&:hover": { bgcolor: skin.buttonSurfaceHover }
                       }}
                     >
                       CLR
@@ -822,10 +1226,10 @@ export default function App() {
                         minWidth: 0,
                         fontSize: "1.06rem",
                         fontWeight: 900,
-                        borderColor: "#6d81a8",
-                        color: "#ffffff",
-                        bgcolor: "#1a2334",
-                        "&:hover": { bgcolor: "#1f2b40" }
+                        borderColor: skin.buttonSurfaceBorder,
+                        color: skin.text,
+                        bgcolor: skin.buttonSurface,
+                        "&:hover": { bgcolor: skin.buttonSurfaceHover }
                       }}
                     >
                       0
@@ -837,10 +1241,10 @@ export default function App() {
                         minHeight: 48,
                         minWidth: 0,
                         fontWeight: 800,
-                        borderColor: "#6d81a8",
-                        color: "#ffffff",
-                        bgcolor: "#1a2334",
-                        "&:hover": { bgcolor: "#1f2b40" }
+                        borderColor: skin.buttonSurfaceBorder,
+                        color: skin.text,
+                        bgcolor: skin.buttonSurface,
+                        "&:hover": { bgcolor: skin.buttonSurfaceHover }
                       }}
                     >
                       DEL
@@ -855,7 +1259,9 @@ export default function App() {
                         fontSize: "0.98rem",
                         letterSpacing: "0.03em",
                         gridColumn: "1 / -1",
-                        bgcolor: "#3478f6"
+                        color: activeButtonText,
+                        bgcolor: skin.liveAccentStrong,
+                        "&:hover": { bgcolor: skin.liveAccentStrong }
                       }}
                     >
                       SET BPM
@@ -872,8 +1278,8 @@ export default function App() {
                   sx={{
                     p: 1.05,
                     borderRadius: 1.7,
-                    bgcolor: "#101723",
-                    border: "1px solid #2f3a4f",
+                    bgcolor: skin.cardBg,
+                    border: `1px solid ${skin.cardBorder}`,
                     boxShadow: "0 8px 18px rgba(0,0,0,0.22)"
                   }}
                 >
@@ -892,11 +1298,13 @@ export default function App() {
                     sx={{
                       minHeight: 44,
                       fontWeight: 800,
-                      color: "#f2f6ff",
-                      bgcolor: settings.round_whole_bpm ? "#6a58e5" : "#2a3650",
-                      border: "1px solid #54688e",
+                      color: settings.round_whole_bpm ? activeButtonText : skin.text,
+                      bgcolor: settings.round_whole_bpm ? skin.iconButtonActiveBg : skin.buttonPrimary,
+                      border: `1px solid ${skin.buttonSurfaceBorder}`,
                       boxShadow: "0 7px 16px rgba(0,0,0,0.24)",
-                      "&:hover": { bgcolor: settings.round_whole_bpm ? "#5d4dcc" : "#324263" },
+                      "&:hover": {
+                        bgcolor: settings.round_whole_bpm ? skin.iconButtonActiveBg : skin.buttonPrimaryHover
+                      },
                       "&:active": { transform: "translateY(1px)" }
                     }}
                   >
@@ -907,15 +1315,15 @@ export default function App() {
                 {(Object.keys(settings.outputs) as OutputName[]).map((target) => {
                   const cfg = settings.outputs[target];
                   const draft = outputDrafts[target];
-                  const accent = OUTPUT_ACCENTS[target];
+                  const accent = skin.outputAccents[target];
                   return (
                     <Box
                       key={target}
                       sx={{
                         p: 1.15,
                         borderRadius: 1.8,
-                        bgcolor: "#101723",
-                        border: "1px solid #2f3a4f",
+                        bgcolor: skin.cardBg,
+                        border: `1px solid ${skin.cardBorder}`,
                         boxShadow: "0 10px 22px rgba(0,0,0,0.24)",
                         minWidth: 0,
                         position: "relative",
@@ -957,25 +1365,14 @@ export default function App() {
                           onChange={(e) => updateDraft(target, "ip", e.target.value)}
                           size="small"
                           fullWidth
-                          sx={{
-                            minWidth: 0,
-                            "& .MuiInputBase-input": { color: "#f0f4ff" },
-                            "& .MuiInputLabel-root": { color: "#9aabcf" },
-                            "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
-                          }}
+                          sx={inputFieldSx}
                         />
                         <TextField
                           label="Port"
                           value={draft.port}
                           onChange={(e) => updateDraft(target, "port", e.target.value)}
                           size="small"
-                          sx={{
-                            width: 110,
-                            minWidth: 90,
-                            "& .MuiInputBase-input": { color: "#f0f4ff" },
-                            "& .MuiInputLabel-root": { color: "#9aabcf" },
-                            "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
-                          }}
+                          sx={{ ...inputFieldSx, width: 110, minWidth: 90 }}
                         />
                       </Stack>
 
@@ -983,18 +1380,7 @@ export default function App() {
                         fullWidth
                         variant="contained"
                         onClick={() => applyOutputTarget(target)}
-                        sx={{
-                          minHeight: 41,
-                          mt: 0.9,
-                          fontWeight: 900,
-                          letterSpacing: "0.02em",
-                          color: "#f1f6ff",
-                          bgcolor: "#2d4062",
-                          border: "1px solid #5671a0",
-                          boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
-                          "&:hover": { bgcolor: "#35507a" },
-                          "&:active": { transform: "translateY(1px)" }
-                        }}
+                        sx={{ ...saveButtonSx, mt: 0.9 }}
                       >
                         SAVE {OUTPUT_LABELS[target]} TARGET
                       </Button>
@@ -1005,8 +1391,8 @@ export default function App() {
                             mt: 0.95,
                             p: 0.85,
                             borderRadius: 1.3,
-                            bgcolor: "#0d141f",
-                            border: "1px solid #2f3a4f"
+                            bgcolor: skin.insetBg,
+                            border: `1px solid ${skin.insetBorder}`
                           }}
                         >
                           <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", opacity: 0.75, mb: 0.6 }}>
@@ -1032,16 +1418,16 @@ export default function App() {
                                   onClick={() => cycleMa3Multiplier(master)}
                                   sx={{
                                     minHeight: 46,
-                                    minWidth: 0,
-                                    px: 0.4,
-                                    py: 0.3,
-                                    display: "grid",
-                                    gap: 0.05,
-                                    alignContent: "center",
-                                    borderColor: "#4a5469",
-                                    color: "#e9f0ff",
-                                    bgcolor: active ? "#3a4f76" : "transparent",
-                                    "&:hover": { bgcolor: active ? "#425a87" : "rgba(255,255,255,0.04)" },
+                                  minWidth: 0,
+                                  px: 0.4,
+                                  py: 0.3,
+                                  display: "grid",
+                                  gap: 0.05,
+                                  alignContent: "center",
+                                    borderColor: skin.iconButtonBorder,
+                                    color: skin.text,
+                                    bgcolor: active ? skin.buttonPrimary : "transparent",
+                                    "&:hover": { bgcolor: active ? skin.buttonPrimaryHover : "rgba(255,255,255,0.04)" },
                                     "&:active": { transform: "translateY(1px)" }
                                   }}
                                 >
@@ -1055,18 +1441,7 @@ export default function App() {
                             fullWidth
                             variant="contained"
                             onClick={applyMa3Osc}
-                            sx={{
-                              minHeight: 41,
-                              mt: 0.8,
-                              fontWeight: 900,
-                              letterSpacing: "0.02em",
-                              color: "#f1f6ff",
-                              bgcolor: "#2d4062",
-                              border: "1px solid #5671a0",
-                              boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
-                              "&:hover": { bgcolor: "#35507a" },
-                              "&:active": { transform: "translateY(1px)" }
-                            }}
+                            sx={{ ...saveButtonSx, mt: 0.8 }}
                           >
                             SAVE MA3 ROUTING
                           </Button>
@@ -1079,8 +1454,8 @@ export default function App() {
                             mt: 0.95,
                             p: 0.85,
                             borderRadius: 1.3,
-                            bgcolor: "#0d141f",
-                            border: "1px solid #2f3a4f"
+                            bgcolor: skin.insetBg,
+                            border: `1px solid ${skin.insetBorder}`
                           }}
                         >
                           <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", opacity: 0.75, mb: 0.8 }}>
@@ -1093,12 +1468,7 @@ export default function App() {
                               onChange={(e) => updateHeavymOscDraft("bpmAddress", e.target.value)}
                               size="small"
                               fullWidth
-                              sx={{
-                                minWidth: 0,
-                                "& .MuiInputBase-input": { color: "#f0f4ff" },
-                                "& .MuiInputLabel-root": { color: "#9aabcf" },
-                                "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
-                              }}
+                              sx={inputFieldSx}
                             />
                             <TextField
                               label="Resync Address"
@@ -1106,12 +1476,7 @@ export default function App() {
                               onChange={(e) => updateHeavymOscDraft("resyncAddress", e.target.value)}
                               size="small"
                               fullWidth
-                              sx={{
-                                minWidth: 0,
-                                "& .MuiInputBase-input": { color: "#f0f4ff" },
-                                "& .MuiInputLabel-root": { color: "#9aabcf" },
-                                "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
-                              }}
+                              sx={inputFieldSx}
                             />
                             <Stack direction="row" spacing={0.8}>
                               <TextField
@@ -1120,12 +1485,7 @@ export default function App() {
                                 onChange={(e) => updateHeavymOscDraft("bpmMin", e.target.value)}
                                 size="small"
                                 fullWidth
-                                sx={{
-                                  minWidth: 0,
-                                  "& .MuiInputBase-input": { color: "#f0f4ff" },
-                                  "& .MuiInputLabel-root": { color: "#9aabcf" },
-                                  "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
-                                }}
+                                sx={inputFieldSx}
                               />
                               <TextField
                                 label="BPM Max"
@@ -1133,12 +1493,7 @@ export default function App() {
                                 onChange={(e) => updateHeavymOscDraft("bpmMax", e.target.value)}
                                 size="small"
                                 fullWidth
-                                sx={{
-                                  minWidth: 0,
-                                  "& .MuiInputBase-input": { color: "#f0f4ff" },
-                                  "& .MuiInputLabel-root": { color: "#9aabcf" },
-                                  "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
-                                }}
+                                sx={inputFieldSx}
                               />
                             </Stack>
                             <TextField
@@ -1147,29 +1502,14 @@ export default function App() {
                               onChange={(e) => updateHeavymOscDraft("resyncValue", e.target.value)}
                               size="small"
                               fullWidth
-                              sx={{
-                                minWidth: 0,
-                                "& .MuiInputBase-input": { color: "#f0f4ff" },
-                                "& .MuiInputLabel-root": { color: "#9aabcf" },
-                                "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
-                              }}
+                              sx={inputFieldSx}
                             />
                             <Stack direction="row" spacing={0.8}>
                               <Button
                                 fullWidth
                                 variant="contained"
                                 onClick={sendHeavymTestBpm}
-                                sx={{
-                                  minHeight: 41,
-                                  fontWeight: 900,
-                                  letterSpacing: "0.02em",
-                                  color: "#f1f6ff",
-                                  bgcolor: "#2d4062",
-                                  border: "1px solid #5671a0",
-                                  boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
-                                  "&:hover": { bgcolor: "#35507a" },
-                                  "&:active": { transform: "translateY(1px)" }
-                                }}
+                                sx={saveButtonSx}
                               >
                                 TEST BPM MSG
                               </Button>
@@ -1177,17 +1517,7 @@ export default function App() {
                                 fullWidth
                                 variant="contained"
                                 onClick={sendHeavymTestSync}
-                                sx={{
-                                  minHeight: 41,
-                                  fontWeight: 900,
-                                  letterSpacing: "0.02em",
-                                  color: "#f1f6ff",
-                                  bgcolor: "#2d4062",
-                                  border: "1px solid #5671a0",
-                                  boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
-                                  "&:hover": { bgcolor: "#35507a" },
-                                  "&:active": { transform: "translateY(1px)" }
-                                }}
+                                sx={saveButtonSx}
                               >
                                 TEST SYNC MSG
                               </Button>
@@ -1196,17 +1526,7 @@ export default function App() {
                               fullWidth
                               variant="contained"
                               onClick={applyHeavymOsc}
-                              sx={{
-                                minHeight: 41,
-                                fontWeight: 900,
-                                letterSpacing: "0.02em",
-                                color: "#f1f6ff",
-                                bgcolor: "#2d4062",
-                                border: "1px solid #5671a0",
-                                boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
-                                "&:hover": { bgcolor: "#35507a" },
-                                "&:active": { transform: "translateY(1px)" }
-                              }}
+                              sx={saveButtonSx}
                             >
                               SAVE HEAVYM OSC
                             </Button>
@@ -1223,13 +1543,13 @@ export default function App() {
                           mt: 1.05,
                           fontWeight: 900,
                           letterSpacing: "0.03em",
-                          color: "#f8fbff",
-                          bgcolor: cfg.enabled ? "#cf334a" : "#1c9b66",
-                          border: `1px solid ${cfg.enabled ? "#de5d70" : "#46bf8b"}`,
+                          color: skin.text,
+                          bgcolor: cfg.enabled ? skin.deactivate : skin.activate,
+                          border: `1px solid ${cfg.enabled ? skin.deactivateBorder : skin.activateBorder}`,
                           boxShadow: cfg.enabled
                             ? "0 8px 16px rgba(207,51,74,0.3)"
                             : "0 8px 16px rgba(28,155,102,0.25)",
-                          "&:hover": { bgcolor: cfg.enabled ? "#b92d42" : "#188355" },
+                          "&:hover": { bgcolor: cfg.enabled ? skin.deactivateHover : skin.activateHover },
                           "&:active": { transform: "translateY(1px)" }
                         }}
                       >
@@ -1238,6 +1558,61 @@ export default function App() {
                     </Box>
                   );
                 })}
+                <Box
+                  sx={{
+                    p: 1.05,
+                    borderRadius: 1.7,
+                    bgcolor: skin.cardBg,
+                    border: `1px solid ${skin.cardBorder}`,
+                    boxShadow: "0 8px 18px rgba(0,0,0,0.22)"
+                  }}
+                >
+                  <Typography sx={{ fontSize: 11, letterSpacing: "0.08em", opacity: 0.75, mb: 0.8 }}>
+                    COLOR SKIN
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                      gap: 0.65
+                    }}
+                  >
+                    {SKIN_CHOICES.map((choice) => {
+                      const active = choice === skinName;
+                      return (
+                        <Button
+                          key={choice}
+                          fullWidth
+                          variant={active ? "contained" : "outlined"}
+                          onClick={() => setSkinName(choice)}
+                          sx={{
+                            minHeight: 42,
+                            justifyContent: "space-between",
+                            fontWeight: 800,
+                            letterSpacing: "0.03em",
+                            color: active ? activeButtonText : skin.text,
+                            borderColor: skin.iconButtonBorder,
+                            bgcolor: active ? skin.liveAccentStrong : skin.buttonSurface,
+                            "&:hover": {
+                              bgcolor: active ? skin.liveAccentStrong : skin.buttonSurfaceHover
+                            }
+                          }}
+                        >
+                          {SKINS[choice].label}
+                          <Box
+                            sx={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: "50%",
+                              border: `1px solid ${skin.iconButtonBorder}`,
+                              bgcolor: SKINS[choice].liveAccentStrong
+                            }}
+                          />
+                        </Button>
+                      );
+                    })}
+                  </Box>
+                </Box>
                 </Stack>
               )}
             </Box>
