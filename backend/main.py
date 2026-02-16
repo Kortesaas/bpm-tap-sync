@@ -107,11 +107,25 @@ def _state_payload(state: TempoState) -> dict[str, Any]:
     }
 
 
+def _is_output_enabled(target: str) -> bool:
+    snapshot = outputs.settings_snapshot()
+    target_cfg = snapshot.get(target, {})
+    return bool(target_cfg.get("enabled", False))
+
+
+async def _sync_output_state(target: str):
+    current_state = await engine.get_state()
+    outputs.set_bpm_for_target(target, current_state.bpm)
+    if target == "resolume":
+        outputs.set_metronome(metronome_enabled)
+
+
 def _settings_payload() -> dict[str, Any]:
     return {
         "type": "settings",
         "round_whole_bpm": round_whole_bpm,
         "outputs": outputs.settings_snapshot(),
+        "ma3_osc": outputs.ma3_settings_snapshot(),
         "heavym_osc": outputs.heavym_settings_snapshot(),
     }
 
@@ -236,17 +250,40 @@ async def ws_endpoint(ws: WebSocket):
                     target = _coerce_output_target(msg["target"])
                     enabled = _coerce_bool(msg["enabled"])
                     outputs.set_output_enabled(target, enabled)
-                    if enabled and target == "resolume":
-                        outputs.set_metronome(metronome_enabled)
-                    if enabled and target == "heavym":
-                        current_state = await engine.get_state()
-                        outputs.set_bpm_for_target("heavym", current_state.bpm)
+                    if enabled:
+                        await _sync_output_state(target)
                     await _broadcast_settings_async()
                 elif t == "set_output_target":
                     target = _coerce_output_target(msg["target"])
                     ip = _coerce_ip(msg["ip"])
                     port = _coerce_port(msg["port"])
                     outputs.set_output_target(target, ip, port)
+                    if _is_output_enabled(target):
+                        await _sync_output_state(target)
+                    await _broadcast_settings_async()
+                elif t == "set_ma3_osc":
+                    primary_master = str(msg["primary_master"]) if "primary_master" in msg else None
+                    extras_payload = msg.get("extras") if "extras" in msg else None
+                    extras: list[dict[str, object]] | None = None
+                    if extras_payload is not None:
+                        if not isinstance(extras_payload, list):
+                            raise ValueError("extras must be a list")
+                        parsed: list[dict[str, object]] = []
+                        for item in extras_payload:
+                            if not isinstance(item, dict):
+                                raise ValueError("extras entry must be object")
+                            parsed.append(
+                                {
+                                    "master": str(item["master"]),
+                                    "multiplier": float(item["multiplier"]),
+                                }
+                            )
+                        extras = parsed
+                    if primary_master is None and extras is None:
+                        raise ValueError("No MA3 OSC settings provided")
+                    outputs.set_ma3_osc(primary_master=primary_master, extras=extras)
+                    if _is_output_enabled("ma3"):
+                        await _sync_output_state("ma3")
                     await _broadcast_settings_async()
                 elif t == "set_heavym_osc":
                     bpm_address = (
@@ -280,6 +317,8 @@ async def ws_endpoint(ws: WebSocket):
                         resync_value=resync_value,
                         resync_send_zero=resync_send_zero,
                     )
+                    if _is_output_enabled("heavym"):
+                        await _sync_output_state("heavym")
                     await _broadcast_settings_async()
                 elif t == "test_heavym_bpm":
                     bpm = _coerce_float(msg.get("bpm", 120.0))

@@ -9,6 +9,16 @@ type OutputSettings = {
   port: number;
 };
 
+type Ma3OscExtra = {
+  master: string;
+  multiplier: number;
+};
+
+type Ma3OscSettings = {
+  primary_master: string;
+  extras: Ma3OscExtra[];
+};
+
 type HeavyMOscSettings = {
   bpm_address: string;
   resync_address: string;
@@ -31,6 +41,7 @@ type SettingsMsg = {
   type: "settings";
   round_whole_bpm: boolean;
   outputs: Record<OutputName, OutputSettings>;
+  ma3_osc: Ma3OscSettings;
   heavym_osc: HeavyMOscSettings;
 };
 
@@ -50,6 +61,7 @@ type ControlMsg =
   | { type: "set_round_whole_bpm"; enabled: boolean }
   | { type: "set_output_enabled"; target: OutputName; enabled: boolean }
   | { type: "set_output_target"; target: OutputName; ip: string; port: number }
+  | { type: "set_ma3_osc"; primary_master: string; extras: Ma3OscExtra[] }
   | {
       type: "set_heavym_osc";
       bpm_address: string;
@@ -81,6 +93,8 @@ const OUTPUT_ACCENTS: Record<OutputName, string> = {
   heavym: "#ffb66a"
 };
 
+const MA3_EXTRA_MASTERS = Array.from({ length: 15 }, (_, i) => `3.${i + 1}`);
+
 export default function App() {
   const [view, setView] = useState<ViewMode>("live");
   const [state, setState] = useState<StateMsg>({
@@ -99,6 +113,10 @@ export default function App() {
       ma3: { enabled: true, ip: "127.0.0.1", port: 8001 },
       resolume: { enabled: true, ip: "127.0.0.1", port: 7000 },
       heavym: { enabled: true, ip: "127.0.0.1", port: 9000 }
+    },
+    ma3_osc: {
+      primary_master: "3.16",
+      extras: []
     },
     heavym_osc: {
       bpm_address: "/tempo/bpm",
@@ -120,6 +138,9 @@ export default function App() {
     resolume: { ip: "127.0.0.1", port: "7000" },
     heavym: { ip: "127.0.0.1", port: "9000" }
   });
+  const [ma3ExtraDraft, setMa3ExtraDraft] = useState<Record<string, number | null>>(() =>
+    Object.fromEntries(MA3_EXTRA_MASTERS.map((master) => [master, null]))
+  );
   const [heavymOscDraft, setHeavymOscDraft] = useState({
     bpmAddress: "/tempo/bpm",
     resyncAddress: "/tempo/resync",
@@ -186,6 +207,16 @@ export default function App() {
             resolume: { ip: msg.outputs.resolume.ip, port: String(msg.outputs.resolume.port) },
             heavym: { ip: msg.outputs.heavym.ip, port: String(msg.outputs.heavym.port) }
           });
+          const nextMa3Draft = Object.fromEntries(MA3_EXTRA_MASTERS.map((master) => [master, null])) as Record<
+            string,
+            number | null
+          >;
+          for (const item of msg.ma3_osc.extras) {
+            if (item.master in nextMa3Draft) {
+              nextMa3Draft[item.master] = item.multiplier;
+            }
+          }
+          setMa3ExtraDraft(nextMa3Draft);
           setHeavymOscDraft({
             bpmAddress: msg.heavym_osc.bpm_address,
             resyncAddress: msg.heavym_osc.resync_address,
@@ -349,6 +380,36 @@ export default function App() {
       target,
       ip: draft.ip.trim(),
       port
+    });
+  };
+
+  const cycleMa3Multiplier = (master: string) => {
+    const order: Array<number | null> = [null, 1.0, 2.0, 0.5];
+    setMa3ExtraDraft((prev) => {
+      const current = prev[master] ?? null;
+      const index = order.findIndex((v) => v === current);
+      const next = order[(index + 1) % order.length];
+      return { ...prev, [master]: next };
+    });
+  };
+
+  const ma3MultiplierLabel = (value: number | null) => {
+    if (value === null) return "OFF";
+    if (value === 2.0) return "*2";
+    if (value === 0.5) return "/2";
+    return "1x";
+  };
+
+  const applyMa3Osc = () => {
+    const extras: Ma3OscExtra[] = MA3_EXTRA_MASTERS.flatMap((master) => {
+      const value = ma3ExtraDraft[master];
+      if (value === null) return [];
+      return [{ master, multiplier: value }];
+    });
+    send({
+      type: "set_ma3_osc",
+      primary_master: settings.ma3_osc.primary_master || "3.16",
+      extras
     });
   };
 
@@ -937,6 +998,80 @@ export default function App() {
                       >
                         SAVE {OUTPUT_LABELS[target]} TARGET
                       </Button>
+
+                      {target === "ma3" ? (
+                        <Box
+                          sx={{
+                            mt: 0.95,
+                            p: 0.85,
+                            borderRadius: 1.3,
+                            bgcolor: "#0d141f",
+                            border: "1px solid #2f3a4f"
+                          }}
+                        >
+                          <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", opacity: 0.75, mb: 0.6 }}>
+                            MA3 BPM ROUTING
+                          </Typography>
+                          <Typography sx={{ fontSize: 11, opacity: 0.8, mb: 0.8 }}>
+                            Always sends to Master {settings.ma3_osc.primary_master || "3.16"}.
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: "grid",
+                              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                              gap: 0.6
+                            }}
+                          >
+                            {MA3_EXTRA_MASTERS.map((master) => {
+                              const value = ma3ExtraDraft[master] ?? null;
+                              const active = value !== null;
+                              return (
+                                <Button
+                                  key={master}
+                                  variant={active ? "contained" : "outlined"}
+                                  onClick={() => cycleMa3Multiplier(master)}
+                                  sx={{
+                                    minHeight: 46,
+                                    minWidth: 0,
+                                    px: 0.4,
+                                    py: 0.3,
+                                    display: "grid",
+                                    gap: 0.05,
+                                    alignContent: "center",
+                                    borderColor: "#4a5469",
+                                    color: "#e9f0ff",
+                                    bgcolor: active ? "#3a4f76" : "transparent",
+                                    "&:hover": { bgcolor: active ? "#425a87" : "rgba(255,255,255,0.04)" },
+                                    "&:active": { transform: "translateY(1px)" }
+                                  }}
+                                >
+                                  <Typography sx={{ fontSize: 11, fontWeight: 900, lineHeight: 1 }}>{master}</Typography>
+                                  <Typography sx={{ fontSize: 11, fontWeight: 800, lineHeight: 1 }}>{ma3MultiplierLabel(value)}</Typography>
+                                </Button>
+                              );
+                            })}
+                          </Box>
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={applyMa3Osc}
+                            sx={{
+                              minHeight: 41,
+                              mt: 0.8,
+                              fontWeight: 900,
+                              letterSpacing: "0.02em",
+                              color: "#f1f6ff",
+                              bgcolor: "#2d4062",
+                              border: "1px solid #5671a0",
+                              boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
+                              "&:hover": { bgcolor: "#35507a" },
+                              "&:active": { transform: "translateY(1px)" }
+                            }}
+                          >
+                            SAVE MA3 ROUTING
+                          </Button>
+                        </Box>
+                      ) : null}
 
                       {target === "heavym" ? (
                         <Box

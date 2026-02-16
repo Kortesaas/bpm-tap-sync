@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from pythonosc.udp_client import SimpleUDPClient
 
@@ -40,6 +41,9 @@ def _bpm_to_normalized_range(bpm: float, minimum_bpm: float, maximum_bpm: float)
         raise ValueError("HeavyM BPM max must be greater than min")
     bounded = _clamp(float(bpm), min_bpm, max_bpm)
     return (bounded - min_bpm) / (max_bpm - min_bpm)
+
+
+_MA3_MASTER_RE = re.compile(r"^3\.(?:[1-9]|1[0-6])$")
 
 
 class OscOut:
@@ -104,7 +108,9 @@ class Outputs:
         self.ma3 = ma3
         self.resolume = resolume
         self.heavym = heavym
-        self.ma3_bpm_master = str(ma3_bpm_master).strip() or "3.16"
+        self.ma3_bpm_master = "3.16"
+        self.ma3_extra_routes: dict[str, float] = {}
+        self.set_ma3_osc(primary_master=ma3_bpm_master, extras=[])
         self.heavym_bpm_address = heavym_bpm_address
         self.heavym_resync_address = heavym_resync_address
         self.heavym_bpm_min = float(heavym_bpm_min)
@@ -138,6 +144,18 @@ class Outputs:
                 "port": self.resolume.port,
             },
             "heavym": {"enabled": self.heavym.enabled, "ip": self.heavym.ip, "port": self.heavym.port},
+        }
+
+    def ma3_settings_snapshot(self) -> dict[str, object]:
+        extras = [
+            {"master": master, "multiplier": mult}
+            for master, mult in sorted(
+                self.ma3_extra_routes.items(), key=lambda item: int(item[0].split(".")[1])
+            )
+        ]
+        return {
+            "primary_master": self.ma3_bpm_master,
+            "extras": extras,
         }
 
     def heavym_settings_snapshot(self) -> dict[str, object]:
@@ -174,6 +192,47 @@ class Outputs:
         if resync_send_zero is not None:
             self.heavym_resync_send_zero = bool(resync_send_zero)
 
+    @staticmethod
+    def _validate_ma3_master(master: str) -> str:
+        text = str(master).strip()
+        if not _MA3_MASTER_RE.match(text):
+            raise ValueError(f"Invalid MA3 speed master: {text}")
+        return text
+
+    @staticmethod
+    def _validate_ma3_multiplier(multiplier: float) -> float:
+        value = float(multiplier)
+        if value not in (0.5, 1.0, 2.0):
+            raise ValueError("MA3 multiplier must be one of: 0.5, 1.0, 2.0")
+        return value
+
+    def set_ma3_osc(
+        self,
+        primary_master: str | None = None,
+        extras: list[tuple[str, float]] | list[dict[str, object]] | None = None,
+    ):
+        if primary_master is not None:
+            self.ma3_bpm_master = self._validate_ma3_master(primary_master)
+
+        if extras is not None:
+            routes: dict[str, float] = {}
+            for item in extras:
+                if isinstance(item, tuple):
+                    master_raw, mult_raw = item
+                elif isinstance(item, dict):
+                    master_raw = item.get("master")
+                    mult_raw = item.get("multiplier")
+                else:
+                    raise ValueError("Invalid MA3 extras entry")
+
+                master = self._validate_ma3_master(str(master_raw))
+                if master == "3.16":
+                    # 3.16 is always handled by primary master routing.
+                    continue
+                mult = self._validate_ma3_multiplier(float(mult_raw))
+                routes[master] = mult
+            self.ma3_extra_routes = routes
+
     def set_bpm(self, bpm: float):
         bpm_value = _compact_bpm_number(bpm)
         self._send_ma3_bpm(bpm_value)
@@ -204,8 +263,14 @@ class Outputs:
 
     def _send_ma3_bpm(self, bpm_value: int | float):
         # grandMA3 onPC tempo control via command string on /cmd.
-        command = f"Master {self.ma3_bpm_master} At BPM {_compact_bpm_text(float(bpm_value))}"
-        self.ma3.send("/cmd", command)
+        base_bpm = float(bpm_value)
+        routes: dict[str, float] = {self.ma3_bpm_master: 1.0}
+        routes.update(self.ma3_extra_routes)
+
+        for master, multiplier in sorted(routes.items(), key=lambda item: int(item[0].split(".")[1])):
+            routed_bpm = base_bpm * float(multiplier)
+            command = f"Master {master} At BPM {_compact_bpm_text(routed_bpm)}"
+            self.ma3.send("/cmd", command)
 
     def _send_resolume_bpm(self, bpm: float):
         # Resolume: composition tempo expects normalized 0.0..1.0.
