@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,19 +38,33 @@ outputs = Outputs(
 clients: set[WebSocket] = set()
 
 
-def _broadcast_state(state: TempoState):
-    payload = {
+def _state_payload(state: TempoState) -> dict[str, Any]:
+    return {
         "type": "state",
         "bpm": state.bpm,
         "beat": state.beat,
         "bar": state.bar,
         "running": state.running,
     }
-    msg = json.dumps(payload)
 
-    loop = asyncio.get_event_loop()
+
+async def _broadcast_state_async(state: TempoState):
+    payload = _state_payload(state)
+    stale: list[WebSocket] = []
+
     for ws in list(clients):
-        loop.call_soon_threadsafe(asyncio.create_task, ws.send_text(msg))
+        try:
+            await ws.send_json(payload)
+        except Exception:
+            stale.append(ws)
+
+    for ws in stale:
+        clients.discard(ws)
+
+
+def _broadcast_state(state: TempoState):
+    loop = asyncio.get_running_loop()
+    loop.create_task(_broadcast_state_async(state))
 
 
 def _on_bpm(bpm: float):
@@ -78,25 +93,37 @@ async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     clients.add(ws)
 
-    s = engine.state
-    await ws.send_json(
-        {"type": "state", "bpm": s.bpm, "beat": s.beat, "bar": s.bar, "running": s.running}
-    )
+    s = await engine.get_state()
+    await ws.send_json(_state_payload(s))
 
     try:
         while True:
             data = await ws.receive_text()
-            msg = json.loads(data)
+            try:
+                msg = json.loads(data)
+            except json.JSONDecodeError:
+                await ws.send_json({"type": "error", "message": "Invalid JSON"})
+                continue
+
+            if not isinstance(msg, dict):
+                await ws.send_json({"type": "error", "message": "Message must be a JSON object"})
+                continue
+
             t = msg.get("type")
 
-            if t == "tap":
-                await engine.tap_bpm()
-            elif t == "set_bpm":
-                await engine.set_bpm(float(msg["bpm"]))
-            elif t == "nudge":
-                await engine.nudge(float(msg.get("delta", 0.0)))
-            elif t == "preset":
-                await engine.set_bpm(float(msg["bpm"]))
+            try:
+                if t == "tap":
+                    await engine.tap_bpm()
+                elif t == "set_bpm":
+                    await engine.set_bpm(float(msg["bpm"]))
+                elif t == "nudge":
+                    await engine.nudge(float(msg.get("delta", 0.0)))
+                elif t == "preset":
+                    await engine.set_bpm(float(msg["bpm"]))
+                else:
+                    await ws.send_json({"type": "error", "message": "Unknown message type"})
+            except (KeyError, TypeError, ValueError):
+                await ws.send_json({"type": "error", "message": "Invalid payload"})
     except WebSocketDisconnect:
         pass
     finally:
