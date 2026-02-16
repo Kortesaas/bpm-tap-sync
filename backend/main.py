@@ -216,6 +216,9 @@ async def ws_endpoint(ws: WebSocket):
                 elif t == "resync":
                     await engine.resync()
                     outputs.resync()
+                    # MA3 has no dedicated resync endpoint, so push current BPM once on resync.
+                    current_state = await engine.get_state()
+                    outputs.set_bpm_for_target("ma3", current_state.bpm)
                 elif t == "sync_bpm":
                     # Explicit manual sync: send current BPM to MA3 only.
                     current_state = await engine.get_state()

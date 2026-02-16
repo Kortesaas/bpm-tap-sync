@@ -126,6 +126,7 @@ const OUTPUT_LABELS: Record<OutputName, string> = {
 };
 
 const SKIN_STORAGE_KEY = "bpm-tap-sync:skin";
+const PERFORMANCE_MODE_STORAGE_KEY = "bpm-tap-sync:performance-mode";
 
 const SKINS: Record<SkinName, SkinPalette> = {
   tech: {
@@ -425,6 +426,13 @@ export default function App() {
     }
     return "tech";
   });
+  const [performanceMode, setPerformanceMode] = useState(() => {
+    try {
+      return localStorage.getItem(PERFORMANCE_MODE_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const [state, setState] = useState<StateMsg>({
     type: "state",
     bpm: 120,
@@ -510,6 +518,14 @@ export default function App() {
       // Ignore storage access issues.
     }
   }, [skinName]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PERFORMANCE_MODE_STORAGE_KEY, performanceMode ? "1" : "0");
+    } catch {
+      // Ignore storage access issues.
+    }
+  }, [performanceMode]);
 
   useEffect(() => {
     let closedByApp = false;
@@ -968,13 +984,13 @@ export default function App() {
               }}
             >
               {view === "live" ? (
-                <Stack spacing={0.9} sx={{ minWidth: 0, pb: 0.4 }}>
+                <Stack spacing={performanceMode ? 1.15 : 0.9} sx={{ minWidth: 0, pb: 0.4 }}>
                 <Typography
                   component="h1"
                   sx={{
                     textAlign: "center",
                     fontWeight: 800,
-                    fontSize: "clamp(2.6rem, 13vw, 4.6rem)",
+                    fontSize: performanceMode ? "clamp(3.55rem, 16vw, 6.25rem)" : "clamp(2.6rem, 13vw, 4.6rem)",
                     lineHeight: 1,
                     letterSpacing: "0.02em"
                   }}
@@ -986,7 +1002,8 @@ export default function App() {
                   direction="row"
                   spacing={0.5}
                   sx={{
-                    p: 0.45,
+                    p: performanceMode ? 0.55 : 0.45,
+                    mb: performanceMode ? 0.45 : 0,
                     borderRadius: 1.1,
                     bgcolor: skin.insetBg,
                     border: `1px solid ${skin.insetBorder}`
@@ -994,11 +1011,11 @@ export default function App() {
                 >
                   {[1, 2, 3, 4].map((b) => (
                     <Box
-                      key={b}
+                        key={b}
                       sx={{
                         flex: 1,
                         minWidth: 0,
-                        height: 8,
+                        height: performanceMode ? 12 : 9,
                         borderRadius: 1,
                         bgcolor: state.beat === b ? skin.liveAccent : skin.beatOff,
                         transition: "background-color 80ms linear"
@@ -1007,7 +1024,7 @@ export default function App() {
                   ))}
                 </Stack>
 
-                <Box sx={{ display: "flex", justifyContent: "center", py: 0.2 }}>
+                <Box sx={{ display: "flex", justifyContent: "center", py: performanceMode ? 0.45 : 0.2, mb: performanceMode ? 0.2 : 0 }}>
                   <Box
                     component="button"
                     type="button"
@@ -1019,13 +1036,13 @@ export default function App() {
                     sx={{
                       position: "relative",
                       overflow: "hidden",
-                      width: "min(56vw, 200px)",
+                      width: performanceMode ? "min(78vw, 290px)" : "min(56vw, 200px)",
                       aspectRatio: "1 / 1",
                       border: "none",
                       borderRadius: 2,
                       cursor: "pointer",
                       color: tapButtonText,
-                      fontSize: "1.8rem",
+                      fontSize: performanceMode ? "2.05rem" : "1.8rem",
                       fontWeight: 800,
                       letterSpacing: "0.08em",
                       touchAction: "manipulation",
@@ -1035,7 +1052,7 @@ export default function App() {
                       boxShadow: tapPressed
                         ? `inset 0 0 0 2px ${skin.tapGlow}, 0 1px 10px rgba(0,0,0,0.35)`
                         : "inset 0 0 0 1px rgba(255,255,255,0.18), 0 8px 20px rgba(0,0,0,0.32)",
-                      transform: tapPressed ? "scale(0.976)" : "scale(1)",
+                      transform: tapPressed ? "scale(0.978)" : "scale(1)",
                       transition: "transform 24ms linear, background-color 42ms linear, box-shadow 42ms linear",
                       "@keyframes tapPulseRing": {
                         "0%": { transform: "scale(0.88)", opacity: 0.55 },
@@ -1087,20 +1104,31 @@ export default function App() {
                   }
                   sx={{
                     py: 0.5,
+                    my: performanceMode ? 0.7 : 0,
                     color: skin.slider,
-                    "& .MuiSlider-thumb": { width: 22, height: 22 },
-                    "& .MuiSlider-track, & .MuiSlider-rail": { height: 6, borderRadius: 8 }
+                    "& .MuiSlider-thumb": {
+                      width: performanceMode ? 28 : 22,
+                      height: performanceMode ? 28 : 22
+                    },
+                    "& .MuiSlider-track, & .MuiSlider-rail": {
+                      height: performanceMode ? 8 : 6,
+                      borderRadius: 8
+                    },
+                    "@media (min-width: 1024px) and (pointer: fine)": {
+                      my: performanceMode ? 1.0 : 0
+                    }
                   }}
                 />
 
-                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 0.7 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 0.7, mt: performanceMode ? 0.15 : 0 }}>
                   <Button
                     variant={resyncPressed ? "contained" : "outlined"}
                     onClick={triggerResync}
                     sx={{
-                      minHeight: 78,
+                      minHeight: performanceMode ? 92 : 78,
                       minWidth: 0,
                       fontWeight: 800,
+                      fontSize: performanceMode ? "0.98rem" : "0.9rem",
                       borderColor: skin.iconButtonBorder,
                       color: skin.text,
                       bgcolor: resyncPressed ? skin.liveAccentStrong : "transparent",
@@ -1113,9 +1141,10 @@ export default function App() {
                     variant={metroPressed ? "contained" : "outlined"}
                     onClick={triggerMetroToggle}
                     sx={{
-                      minHeight: 78,
+                      minHeight: performanceMode ? 92 : 78,
                       minWidth: 0,
                       fontWeight: 800,
+                      fontSize: performanceMode ? "0.98rem" : "0.9rem",
                       borderColor: skin.iconButtonBorder,
                       color: skin.text,
                       bgcolor: metroPressed ? skin.liveAccentStrong : "transparent",
@@ -1130,20 +1159,32 @@ export default function App() {
                   sx={{
                     display: "grid",
                     gridTemplateColumns: `repeat(${nudgeButtons.length + 2}, minmax(0, 1fr))`,
-                    gap: 0.7
+                    gap: performanceMode ? 0.8 : 0.7
                   }}
                 >
                   <Button
                     variant="outlined"
                     onClick={() => send({ type: "set_bpm", bpm: state.bpm / 2 })}
-                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: skin.iconButtonBorder, color: skin.text }}
+                    sx={{
+                      minHeight: performanceMode ? 52 : 40,
+                      minWidth: 0,
+                      fontWeight: 700,
+                      borderColor: skin.iconButtonBorder,
+                      color: skin.text
+                    }}
                   >
                     /2
                   </Button>
                   <Button
                     variant="outlined"
                     onClick={() => send({ type: "set_bpm", bpm: state.bpm * 2 })}
-                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: skin.iconButtonBorder, color: skin.text }}
+                    sx={{
+                      minHeight: performanceMode ? 52 : 40,
+                      minWidth: 0,
+                      fontWeight: 700,
+                      borderColor: skin.iconButtonBorder,
+                      color: skin.text
+                    }}
                   >
                     *2
                   </Button>
@@ -1152,13 +1193,20 @@ export default function App() {
                       key={item.label}
                       variant="outlined"
                       onClick={() => send({ type: "nudge", delta: item.delta })}
-                      sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: skin.iconButtonBorder, color: skin.text }}
+                      sx={{
+                        minHeight: performanceMode ? 52 : 40,
+                        minWidth: 0,
+                        fontWeight: 700,
+                        borderColor: skin.iconButtonBorder,
+                        color: skin.text
+                      }}
                     >
                       {item.label}
                     </Button>
                   ))}
                 </Box>
 
+                {!performanceMode ? (
                 <Box sx={{ mt: "auto", minWidth: 0 }}>
                   <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", opacity: 0.75, mb: 0.5 }}>
                     DIRECT BPM INPUT
@@ -1268,6 +1316,7 @@ export default function App() {
                     </Button>
                   </Box>
                 </Box>
+                ) : null}
                 </Stack>
               ) : (
                 <Stack spacing={1.2} sx={{ minWidth: 0, pb: 0.4 }}>
@@ -1309,6 +1358,25 @@ export default function App() {
                     }}
                   >
                     ROUND BPM {settings.round_whole_bpm ? "ON" : "OFF"}
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant={performanceMode ? "contained" : "outlined"}
+                    onClick={() => setPerformanceMode((prev) => !prev)}
+                    sx={{
+                      minHeight: 42,
+                      mt: 0.7,
+                      fontWeight: 800,
+                      color: performanceMode ? activeButtonText : skin.text,
+                      bgcolor: performanceMode ? skin.liveAccentStrong : "transparent",
+                      border: `1px solid ${skin.buttonSurfaceBorder}`,
+                      "&:hover": {
+                        bgcolor: performanceMode ? skin.liveAccentStrong : "rgba(255,255,255,0.04)"
+                      },
+                      "&:active": { transform: "translateY(1px)" }
+                    }}
+                  >
+                    PERFORMANCE MODE {performanceMode ? "ON" : "OFF"}
                   </Button>
                 </Box>
 
