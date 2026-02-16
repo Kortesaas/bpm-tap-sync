@@ -34,6 +34,12 @@ outputs = Outputs(
     ma3=OscOut(settings.ma3_ip, settings.ma3_port),
     resolume=OscOut(settings.resolume_ip, settings.resolume_port),
     heavym=OscOut(settings.heavym_ip, settings.heavym_port),
+    heavym_bpm_address=settings.heavym_bpm_address,
+    heavym_resync_address=settings.heavym_resync_address,
+    heavym_bpm_min=settings.heavym_bpm_min,
+    heavym_bpm_max=settings.heavym_bpm_max,
+    heavym_resync_value=settings.heavym_resync_value,
+    heavym_resync_send_zero=settings.heavym_resync_send_zero,
 )
 
 clients: set[WebSocket] = set()
@@ -75,6 +81,19 @@ def _coerce_port(value: Any) -> int:
     return port
 
 
+def _coerce_osc_address(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("OSC address must be a string")
+    address = value.strip()
+    if not address or not address.startswith("/"):
+        raise ValueError("OSC address must start with '/'")
+    return address
+
+
+def _coerce_float(value: Any) -> float:
+    return float(value)
+
+
 def _state_payload(state: TempoState) -> dict[str, Any]:
     return {
         "type": "state",
@@ -92,6 +111,7 @@ def _settings_payload() -> dict[str, Any]:
         "type": "settings",
         "round_whole_bpm": round_whole_bpm,
         "outputs": outputs.settings_snapshot(),
+        "heavym_osc": outputs.heavym_settings_snapshot(),
     }
 
 
@@ -211,18 +231,50 @@ async def ws_endpoint(ws: WebSocket):
                     target = _coerce_output_target(msg["target"])
                     enabled = _coerce_bool(msg["enabled"])
                     outputs.set_output_enabled(target, enabled)
-                    if enabled:
+                    if enabled and target == "resolume":
+                        outputs.set_metronome(metronome_enabled)
+                    if enabled and target == "heavym":
                         current_state = await engine.get_state()
-                        # Immediately push current tempo so newly activated targets sync at once.
-                        outputs.set_bpm(current_state.bpm)
-                        if target == "resolume":
-                            outputs.set_metronome(metronome_enabled)
+                        outputs.set_bpm_for_target("heavym", current_state.bpm)
                     await _broadcast_settings_async()
                 elif t == "set_output_target":
                     target = _coerce_output_target(msg["target"])
                     ip = _coerce_ip(msg["ip"])
                     port = _coerce_port(msg["port"])
                     outputs.set_output_target(target, ip, port)
+                    await _broadcast_settings_async()
+                elif t == "set_heavym_osc":
+                    bpm_address = (
+                        _coerce_osc_address(msg["bpm_address"]) if "bpm_address" in msg else None
+                    )
+                    resync_address = (
+                        _coerce_osc_address(msg["resync_address"]) if "resync_address" in msg else None
+                    )
+                    bpm_min = _coerce_float(msg["bpm_min"]) if "bpm_min" in msg else None
+                    bpm_max = _coerce_float(msg["bpm_max"]) if "bpm_max" in msg else None
+                    resync_value = _coerce_float(msg["resync_value"]) if "resync_value" in msg else None
+                    resync_send_zero = (
+                        _coerce_bool(msg["resync_send_zero"]) if "resync_send_zero" in msg else None
+                    )
+
+                    if (
+                        bpm_address is None
+                        and resync_address is None
+                        and bpm_min is None
+                        and bpm_max is None
+                        and resync_value is None
+                        and resync_send_zero is None
+                    ):
+                        raise ValueError("No HeavyM OSC settings provided")
+
+                    outputs.set_heavym_osc(
+                        bpm_address=bpm_address,
+                        resync_address=resync_address,
+                        bpm_min=bpm_min,
+                        bpm_max=bpm_max,
+                        resync_value=resync_value,
+                        resync_send_zero=resync_send_zero,
+                    )
                     await _broadcast_settings_async()
                 elif t == "get_settings":
                     await ws.send_json(_settings_payload())

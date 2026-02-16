@@ -107,11 +107,13 @@ class TempoEngine:
 
     async def set_bpm(self, bpm: float):
         async with self._lock:
+            previous_bpm = self.state.bpm
             bpm = self._clamp(float(bpm), self.MIN_BPM, self.MAX_BPM)
             bpm = self._quantize(bpm)
             self.state.bpm = bpm
             snapshot = self._snapshot_locked()
-        self._on_bpm(bpm)
+        if abs(bpm - previous_bpm) > 1e-9:
+            self._on_bpm(bpm)
         self._on_state(snapshot)
 
     async def tap_bpm(self) -> bool:
@@ -129,11 +131,13 @@ class TempoEngine:
 
     async def nudge(self, delta: float):
         async with self._lock:
+            previous_bpm = self.state.bpm
             next_bpm = self._clamp(self.state.bpm + float(delta), self.MIN_BPM, self.MAX_BPM)
             self.state.bpm = self._quantize(next_bpm)
             bpm = self.state.bpm
             snapshot = self._snapshot_locked()
-        self._on_bpm(bpm)
+        if abs(bpm - previous_bpm) > 1e-9:
+            self._on_bpm(bpm)
         self._on_state(snapshot)
 
     async def resync(self):
@@ -147,11 +151,13 @@ class TempoEngine:
 
     async def set_whole_bpm_rounding(self, enabled: bool):
         async with self._lock:
+            previous_bpm = self.state.bpm
             self._bpm_step = 1.0 if enabled else 0.1
             self.state.bpm = self._quantize(self._clamp(self.state.bpm, self.MIN_BPM, self.MAX_BPM))
             bpm = self.state.bpm
             snapshot = self._snapshot_locked()
-        self._on_bpm(bpm)
+        if abs(bpm - previous_bpm) > 1e-9:
+            self._on_bpm(bpm)
         self._on_state(snapshot)
 
     async def get_state(self) -> TempoState:
@@ -162,7 +168,6 @@ class TempoEngine:
         async with self._lock:
             self.state.last_beat_ts = time.monotonic()
             snapshot = self._snapshot_locked()
-        self._on_bpm(snapshot.bpm)
         self._on_state(snapshot)
 
         while True:

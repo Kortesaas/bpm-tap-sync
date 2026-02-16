@@ -9,6 +9,14 @@ type OutputSettings = {
   port: number;
 };
 
+type HeavyMOscSettings = {
+  bpm_address: string;
+  resync_address: string;
+  bpm_min: number;
+  bpm_max: number;
+  resync_value: number;
+};
+
 type StateMsg = {
   type: "state";
   bpm: number;
@@ -23,6 +31,7 @@ type SettingsMsg = {
   type: "settings";
   round_whole_bpm: boolean;
   outputs: Record<OutputName, OutputSettings>;
+  heavym_osc: HeavyMOscSettings;
 };
 
 type ErrorMsg = {
@@ -41,6 +50,14 @@ type ControlMsg =
   | { type: "set_round_whole_bpm"; enabled: boolean }
   | { type: "set_output_enabled"; target: OutputName; enabled: boolean }
   | { type: "set_output_target"; target: OutputName; ip: string; port: number }
+  | {
+      type: "set_heavym_osc";
+      bpm_address: string;
+      resync_address: string;
+      bpm_min: number;
+      bpm_max: number;
+      resync_value: number;
+    }
   | { type: "get_settings" };
 
 type ViewMode = "live" | "settings";
@@ -54,6 +71,12 @@ const OUTPUT_LABELS: Record<OutputName, string> = {
   ma3: "MA3",
   resolume: "Resolume",
   heavym: "HeavyM"
+};
+
+const OUTPUT_ACCENTS: Record<OutputName, string> = {
+  ma3: "#f2f6ff",
+  resolume: "#6ee6a1",
+  heavym: "#ffb66a"
 };
 
 export default function App() {
@@ -74,6 +97,13 @@ export default function App() {
       ma3: { enabled: true, ip: "127.0.0.1", port: 8001 },
       resolume: { enabled: true, ip: "127.0.0.1", port: 7000 },
       heavym: { enabled: true, ip: "127.0.0.1", port: 9000 }
+    },
+    heavym_osc: {
+      bpm_address: "/tempo/bpm",
+      resync_address: "/tempo/resync",
+      bpm_min: 20,
+      bpm_max: 999,
+      resync_value: 1
     }
   });
   const [tapPressed, setTapPressed] = useState(false);
@@ -86,6 +116,13 @@ export default function App() {
     ma3: { ip: "127.0.0.1", port: "8001" },
     resolume: { ip: "127.0.0.1", port: "7000" },
     heavym: { ip: "127.0.0.1", port: "9000" }
+  });
+  const [heavymOscDraft, setHeavymOscDraft] = useState({
+    bpmAddress: "/tempo/bpm",
+    resyncAddress: "/tempo/resync",
+    bpmMin: "20",
+    bpmMax: "999",
+    resyncValue: "1.0"
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -144,6 +181,13 @@ export default function App() {
             ma3: { ip: msg.outputs.ma3.ip, port: String(msg.outputs.ma3.port) },
             resolume: { ip: msg.outputs.resolume.ip, port: String(msg.outputs.resolume.port) },
             heavym: { ip: msg.outputs.heavym.ip, port: String(msg.outputs.heavym.port) }
+          });
+          setHeavymOscDraft({
+            bpmAddress: msg.heavym_osc.bpm_address,
+            resyncAddress: msg.heavym_osc.resync_address,
+            bpmMin: String(msg.heavym_osc.bpm_min),
+            bpmMax: String(msg.heavym_osc.bpm_max),
+            resyncValue: String(msg.heavym_osc.resync_value)
           });
         }
       };
@@ -277,6 +321,31 @@ export default function App() {
     });
   };
 
+  const updateHeavymOscDraft = (
+    field: "bpmAddress" | "resyncAddress" | "bpmMin" | "bpmMax" | "resyncValue",
+    value: string
+  ) => {
+    setHeavymOscDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const applyHeavymOsc = () => {
+    const bpmAddress = heavymOscDraft.bpmAddress.trim();
+    const resyncAddress = heavymOscDraft.resyncAddress.trim();
+    const bpmMin = Number.parseFloat(heavymOscDraft.bpmMin);
+    const bpmMax = Number.parseFloat(heavymOscDraft.bpmMax);
+    const resyncValue = Number.parseFloat(heavymOscDraft.resyncValue);
+    if (!bpmAddress || !resyncAddress || Number.isNaN(bpmMin) || Number.isNaN(bpmMax) || Number.isNaN(resyncValue)) return;
+    if (bpmMax <= bpmMin) return;
+    send({
+      type: "set_heavym_osc",
+      bpm_address: bpmAddress,
+      resync_address: resyncAddress,
+      bpm_min: bpmMin,
+      bpm_max: bpmMax,
+      resync_value: resyncValue
+    });
+  };
+
   return (
     <>
       <GlobalStyles
@@ -298,6 +367,9 @@ export default function App() {
           position: "fixed",
           inset: 0,
           overflow: "hidden",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "stretch",
           px: "max(8px, env(safe-area-inset-left))",
           pr: "max(8px, env(safe-area-inset-right))",
           pt: "max(8px, env(safe-area-inset-top))",
@@ -310,6 +382,7 @@ export default function App() {
         <Stack
           spacing={0.9}
           sx={{
+            "--desktop-content-scale": "1",
             width: "100%",
             height: "100%",
             minWidth: 0,
@@ -317,7 +390,14 @@ export default function App() {
             borderRadius: 2.4,
             background: "#161c27",
             border: "1px solid #2e3647",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)"
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+            "@media (min-width: 1024px) and (pointer: fine)": {
+              "--desktop-content-scale": "clamp(0.78, calc((100dvh - 24px) / 940), 1)",
+              width: "min(520px, calc((100dvh - 24px) * 11 / 19.5))",
+              height: "auto",
+              aspectRatio: "11 / 19.5",
+              maxHeight: "calc(100dvh - 24px)"
+            }
           }}
         >
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ minWidth: 0 }}>
@@ -373,9 +453,35 @@ export default function App() {
             </Stack>
           </Stack>
 
-          <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
-            {view === "live" ? (
-              <Stack spacing={0.9} sx={{ minWidth: 0, pb: 0.4 }}>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+              overflowX: "hidden",
+              "@media (min-width: 1024px) and (pointer: fine)": {
+                overflowY: "auto",
+                overflowX: "hidden",
+                scrollbarWidth: "none",
+                "&::-webkit-scrollbar": {
+                  width: 0,
+                  height: 0
+                }
+              }
+            }}
+          >
+            <Box
+              sx={{
+                width: "100%",
+                "@media (min-width: 1024px) and (pointer: fine)": {
+                  transform: "scale(var(--desktop-content-scale))",
+                  transformOrigin: "top center",
+                  width: "calc(100% / var(--desktop-content-scale))"
+                }
+              }}
+            >
+              {view === "live" ? (
+                <Stack spacing={0.9} sx={{ minWidth: 0, pb: 0.4 }}>
                 <Typography
                   component="h1"
                   sx={{
@@ -638,18 +744,19 @@ export default function App() {
                     </Button>
                   </Box>
                 </Box>
-              </Stack>
-            ) : (
-              <Stack spacing={1.1} sx={{ minWidth: 0, pb: 0.4 }}>
+                </Stack>
+              ) : (
+                <Stack spacing={1.2} sx={{ minWidth: 0, pb: 0.4 }}>
                 <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", opacity: 0.85 }}>
                   SETTINGS
                 </Typography>
                 <Box
                   sx={{
-                    p: 1,
-                    borderRadius: 1.4,
-                    bgcolor: "#0f141f",
-                    border: "1px solid #2a3140"
+                    p: 1.05,
+                    borderRadius: 1.7,
+                    bgcolor: "#101723",
+                    border: "1px solid #2f3a4f",
+                    boxShadow: "0 8px 18px rgba(0,0,0,0.22)"
                   }}
                 >
                   <Typography sx={{ fontSize: 11, letterSpacing: "0.08em", opacity: 0.75, mb: 0.8 }}>
@@ -665,9 +772,14 @@ export default function App() {
                       })
                     }
                     sx={{
-                      minHeight: 42,
+                      minHeight: 44,
                       fontWeight: 800,
-                      bgcolor: settings.round_whole_bpm ? "#6a58e5" : "transparent"
+                      color: "#f2f6ff",
+                      bgcolor: settings.round_whole_bpm ? "#6a58e5" : "#2a3650",
+                      border: "1px solid #54688e",
+                      boxShadow: "0 7px 16px rgba(0,0,0,0.24)",
+                      "&:hover": { bgcolor: settings.round_whole_bpm ? "#5d4dcc" : "#324263" },
+                      "&:active": { transform: "translateY(1px)" }
                     }}
                   >
                     ROUND BPM {settings.round_whole_bpm ? "ON" : "OFF"}
@@ -677,38 +789,48 @@ export default function App() {
                 {(Object.keys(settings.outputs) as OutputName[]).map((target) => {
                   const cfg = settings.outputs[target];
                   const draft = outputDrafts[target];
+                  const accent = OUTPUT_ACCENTS[target];
                   return (
                     <Box
                       key={target}
                       sx={{
-                        p: 1,
-                        borderRadius: 1.4,
-                        bgcolor: "#0f141f",
-                        border: "1px solid #2a3140",
-                        minWidth: 0
+                        p: 1.15,
+                        borderRadius: 1.8,
+                        bgcolor: "#101723",
+                        border: "1px solid #2f3a4f",
+                        boxShadow: "0 10px 22px rgba(0,0,0,0.24)",
+                        minWidth: 0,
+                        position: "relative",
+                        overflow: "hidden",
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 4,
+                          bgcolor: accent
+                        }
                       }}
                     >
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.8 }}>
-                        <Typography sx={{ fontWeight: 800 }}>{OUTPUT_LABELS[target]}</Typography>
-                        <Typography sx={{ fontSize: 12, fontWeight: 800, color: cfg.enabled ? "#4ae28f" : "#ff8a8a" }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.95 }}>
+                        <Typography sx={{ fontWeight: 900, letterSpacing: "0.02em" }}>{OUTPUT_LABELS[target]}</Typography>
+                        <Box
+                          sx={{
+                            px: 0.8,
+                            py: 0.22,
+                            borderRadius: 999,
+                            fontSize: 11,
+                            fontWeight: 900,
+                            letterSpacing: "0.03em",
+                            color: cfg.enabled ? "#5ef19d" : "#ff9d9d",
+                            bgcolor: cfg.enabled ? "rgba(94,241,157,0.12)" : "rgba(255,157,157,0.12)",
+                            border: `1px solid ${cfg.enabled ? "rgba(94,241,157,0.35)" : "rgba(255,157,157,0.35)"}`
+                          }}
+                        >
                           {cfg.enabled ? "ACTIVE" : "DISABLED"}
-                        </Typography>
+                        </Box>
                       </Stack>
-
-                      <Button
-                        fullWidth
-                        variant={cfg.enabled ? "contained" : "outlined"}
-                        onClick={() => toggleOutput(target)}
-                        sx={{
-                          minHeight: 40,
-                          mb: 0.8,
-                          fontWeight: 800,
-                          bgcolor: cfg.enabled ? "#18a367" : "transparent",
-                          "&:hover": { bgcolor: cfg.enabled ? "#168d5a" : "rgba(255,255,255,0.04)" }
-                        }}
-                      >
-                        {cfg.enabled ? "DEACTIVATE" : "ACTIVATE"}
-                      </Button>
 
                       <Stack direction="row" spacing={0.8} sx={{ minWidth: 0 }}>
                         <TextField
@@ -741,17 +863,154 @@ export default function App() {
 
                       <Button
                         fullWidth
-                        variant="outlined"
+                        variant="contained"
                         onClick={() => applyOutputTarget(target)}
-                        sx={{ minHeight: 40, mt: 0.8, fontWeight: 800, borderColor: "#4a5469", color: "#e5ecff" }}
+                        sx={{
+                          minHeight: 41,
+                          mt: 0.9,
+                          fontWeight: 900,
+                          letterSpacing: "0.02em",
+                          color: "#f1f6ff",
+                          bgcolor: "#2d4062",
+                          border: "1px solid #5671a0",
+                          boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
+                          "&:hover": { bgcolor: "#35507a" },
+                          "&:active": { transform: "translateY(1px)" }
+                        }}
                       >
                         SAVE {OUTPUT_LABELS[target]} TARGET
+                      </Button>
+
+                      {target === "heavym" ? (
+                        <Box
+                          sx={{
+                            mt: 0.95,
+                            p: 0.85,
+                            borderRadius: 1.3,
+                            bgcolor: "#0d141f",
+                            border: "1px solid #2f3a4f"
+                          }}
+                        >
+                          <Typography sx={{ fontSize: 10, letterSpacing: "0.08em", opacity: 0.75, mb: 0.8 }}>
+                            HEAVYM OSC MAPPING
+                          </Typography>
+                          <Stack spacing={0.8} sx={{ minWidth: 0 }}>
+                            <TextField
+                              label="BPM Address"
+                              value={heavymOscDraft.bpmAddress}
+                              onChange={(e) => updateHeavymOscDraft("bpmAddress", e.target.value)}
+                              size="small"
+                              fullWidth
+                              sx={{
+                                minWidth: 0,
+                                "& .MuiInputBase-input": { color: "#f0f4ff" },
+                                "& .MuiInputLabel-root": { color: "#9aabcf" },
+                                "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
+                              }}
+                            />
+                            <TextField
+                              label="Resync Address"
+                              value={heavymOscDraft.resyncAddress}
+                              onChange={(e) => updateHeavymOscDraft("resyncAddress", e.target.value)}
+                              size="small"
+                              fullWidth
+                              sx={{
+                                minWidth: 0,
+                                "& .MuiInputBase-input": { color: "#f0f4ff" },
+                                "& .MuiInputLabel-root": { color: "#9aabcf" },
+                                "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
+                              }}
+                            />
+                            <Stack direction="row" spacing={0.8}>
+                              <TextField
+                                label="BPM Min"
+                                value={heavymOscDraft.bpmMin}
+                                onChange={(e) => updateHeavymOscDraft("bpmMin", e.target.value)}
+                                size="small"
+                                fullWidth
+                                sx={{
+                                  minWidth: 0,
+                                  "& .MuiInputBase-input": { color: "#f0f4ff" },
+                                  "& .MuiInputLabel-root": { color: "#9aabcf" },
+                                  "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
+                                }}
+                              />
+                              <TextField
+                                label="BPM Max"
+                                value={heavymOscDraft.bpmMax}
+                                onChange={(e) => updateHeavymOscDraft("bpmMax", e.target.value)}
+                                size="small"
+                                fullWidth
+                                sx={{
+                                  minWidth: 0,
+                                  "& .MuiInputBase-input": { color: "#f0f4ff" },
+                                  "& .MuiInputLabel-root": { color: "#9aabcf" },
+                                  "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
+                                }}
+                              />
+                            </Stack>
+                            <TextField
+                              label="Resync Value"
+                              value={heavymOscDraft.resyncValue}
+                              onChange={(e) => updateHeavymOscDraft("resyncValue", e.target.value)}
+                              size="small"
+                              fullWidth
+                              sx={{
+                                minWidth: 0,
+                                "& .MuiInputBase-input": { color: "#f0f4ff" },
+                                "& .MuiInputLabel-root": { color: "#9aabcf" },
+                                "& .MuiOutlinedInput-root fieldset": { borderColor: "#4a5469" }
+                              }}
+                            />
+                            <Button
+                              fullWidth
+                              variant="contained"
+                              onClick={applyHeavymOsc}
+                              sx={{
+                                minHeight: 41,
+                                fontWeight: 900,
+                                letterSpacing: "0.02em",
+                                color: "#f1f6ff",
+                                bgcolor: "#2d4062",
+                                border: "1px solid #5671a0",
+                                boxShadow: "0 6px 14px rgba(0,0,0,0.24)",
+                                "&:hover": { bgcolor: "#35507a" },
+                                "&:active": { transform: "translateY(1px)" }
+                              }}
+                            >
+                              SAVE HEAVYM OSC
+                            </Button>
+                          </Stack>
+                        </Box>
+                      ) : null}
+
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={() => toggleOutput(target)}
+                        sx={{
+                          minHeight: 44,
+                          mt: 1.05,
+                          fontWeight: 900,
+                          letterSpacing: "0.03em",
+                          color: "#f8fbff",
+                          bgcolor: cfg.enabled ? "#cf334a" : "#1c9b66",
+                          border: `1px solid ${cfg.enabled ? "#de5d70" : "#46bf8b"}`,
+                          boxShadow: cfg.enabled
+                            ? "0 8px 16px rgba(207,51,74,0.3)"
+                            : "0 8px 16px rgba(28,155,102,0.25)",
+                          "&:hover": { bgcolor: cfg.enabled ? "#b92d42" : "#188355" },
+                          "&:active": { transform: "translateY(1px)" }
+                        }}
+                      >
+                        {cfg.enabled ? "DEACTIVATE" : "ACTIVATE"}
                       </Button>
                     </Box>
                   );
                 })}
-              </Stack>
-            )}
+                </Stack>
+              )}
+            </Box>
           </Box>
         </Stack>
       </Box>
