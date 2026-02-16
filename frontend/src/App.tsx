@@ -40,11 +40,13 @@ export default function App() {
     bar: 1,
     running: true,
     metronome: false,
-    round_whole_bpm: false
+    round_whole_bpm: true
   });
   const [connected, setConnected] = useState(false);
+  const [tapPressed, setTapPressed] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const tapReleaseTimerRef = useRef<number | null>(null);
   const presets = useMemo(() => [90, 100, 110, 120, 128, 140], []);
 
   useEffect(() => {
@@ -83,6 +85,9 @@ export default function App() {
 
     return () => {
       closedByApp = true;
+      if (tapReleaseTimerRef.current !== null) {
+        window.clearTimeout(tapReleaseTimerRef.current);
+      }
       wsRef.current?.close();
     };
   }, []);
@@ -93,32 +98,76 @@ export default function App() {
     ws.send(JSON.stringify(obj));
   };
 
-  const handleTap = () => send({ type: "tap" });
+  const handleTapDown = () => {
+    setTapPressed(true);
+    send({ type: "tap" });
+    if (tapReleaseTimerRef.current !== null) {
+      window.clearTimeout(tapReleaseTimerRef.current);
+    }
+    tapReleaseTimerRef.current = window.setTimeout(() => {
+      setTapPressed(false);
+      tapReleaseTimerRef.current = null;
+    }, 90);
+  };
+
+  const nudgeButtons = state.round_whole_bpm
+    ? [
+        { label: "-1", delta: -1.0 },
+        { label: "+1", delta: 1.0 }
+      ]
+    : [
+        { label: "-1", delta: -1.0 },
+        { label: "-0.1", delta: -0.1 },
+        { label: "+0.1", delta: 0.1 },
+        { label: "+1", delta: 1.0 }
+      ];
 
   return (
     <Box
       sx={{
         minHeight: "100dvh",
-        px: 2,
-        pt: 2,
-        pb: "calc(env(safe-area-inset-bottom) + 16px)",
-        color: "#f6f8ff",
-        background: "radial-gradient(circle at 20% 15%, #22325f 0%, #0e1424 45%, #090b12 100%)"
+        px: 1.6,
+        pt: 1.6,
+        pb: "calc(env(safe-area-inset-bottom) + 14px)",
+        color: "#d7e1ff",
+        fontFamily: "'IBM Plex Mono', 'JetBrains Mono', 'Consolas', monospace",
+        backgroundColor: "#080d17",
+        backgroundImage:
+          "radial-gradient(80% 60% at 50% 0%, rgba(49,86,158,0.30) 0%, rgba(8,13,23,0) 100%), linear-gradient(rgba(66,98,166,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(66,98,166,0.14) 1px, transparent 1px)",
+        backgroundSize: "100% 100%, 22px 22px, 22px 22px"
       }}
     >
-      <Stack spacing={2.2} sx={{ width: "100%", maxWidth: 420, mx: "auto" }}>
-        <Typography sx={{ textAlign: "center", opacity: 0.75, fontSize: 12, fontWeight: 700 }}>
-          {connected ? "CONNECTED" : "RECONNECTING"}
-        </Typography>
+      <Stack
+        spacing={1.5}
+        sx={{
+          width: "100%",
+          maxWidth: 420,
+          mx: "auto",
+          p: 1.2,
+          borderRadius: 4,
+          border: "1px solid rgba(120,150,210,0.28)",
+          background: "rgba(7,11,20,0.72)",
+          backdropFilter: "blur(8px)"
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography sx={{ fontSize: 11, letterSpacing: "0.08em", opacity: 0.7 }}>
+            BPM TAP SYNC
+          </Typography>
+          <Typography sx={{ fontSize: 11, letterSpacing: "0.08em", opacity: 0.85 }}>
+            {connected ? "LINK OK" : "RECONNECT"}
+          </Typography>
+        </Stack>
 
         <Typography
           component="h1"
           sx={{
             textAlign: "center",
             fontWeight: 900,
-            letterSpacing: "0.02em",
-            fontSize: "clamp(3.3rem, 18vw, 5.4rem)",
-            lineHeight: 1
+            fontSize: "clamp(3.1rem, 15vw, 5rem)",
+            lineHeight: 1,
+            letterSpacing: "0.03em",
+            textShadow: "0 0 14px rgba(101,178,255,0.35)"
           }}
         >
           {state.round_whole_bpm ? state.bpm.toFixed(0) : state.bpm.toFixed(1)}
@@ -126,11 +175,12 @@ export default function App() {
 
         <Stack
           direction="row"
-          spacing={0.7}
+          spacing={0.55}
           sx={{
-            p: 0.8,
-            borderRadius: 99,
-            bgcolor: "rgba(255,255,255,0.08)"
+            p: 0.55,
+            borderRadius: 1.3,
+            border: "1px solid rgba(121,165,234,0.24)",
+            bgcolor: "rgba(115,138,177,0.08)"
           }}
         >
           {[1, 2, 3, 4].map((b) => (
@@ -138,39 +188,49 @@ export default function App() {
               key={b}
               sx={{
                 flex: 1,
-                height: 10,
-                borderRadius: 99,
-                bgcolor: state.beat === b ? "#f9c74f" : "rgba(255,255,255,0.22)",
-                boxShadow: state.beat === b ? "0 0 8px rgba(249,199,79,0.5)" : "none",
-                opacity: state.beat === b ? 1 : 0.75,
-                transition: "background-color 100ms linear, opacity 100ms linear, box-shadow 120ms linear"
+                height: 9,
+                borderRadius: 1,
+                bgcolor: state.beat === b ? "#7fd7ff" : "rgba(168,190,227,0.20)",
+                boxShadow: state.beat === b ? "0 0 9px rgba(127,215,255,0.55)" : "none",
+                transition: "background-color 80ms linear, box-shadow 100ms linear"
               }}
             />
           ))}
         </Stack>
 
-        <Box sx={{ display: "flex", justifyContent: "center" }}>
-          <Button
-            variant="contained"
-            onPointerDown={handleTap}
+        <Box sx={{ display: "flex", justifyContent: "center", py: 0.6 }}>
+          <Box
+            component="button"
+            type="button"
+            onPointerDown={handleTapDown}
             sx={{
-              width: "min(72vw, 260px)",
+              width: "min(74vw, 270px)",
               aspectRatio: "1 / 1",
-              minHeight: 220,
+              border: "none",
               borderRadius: 3,
-              fontSize: "2rem",
+              cursor: "pointer",
+              color: "#dff2ff",
+              fontSize: "2.1rem",
               fontWeight: 900,
-              letterSpacing: "0.1em",
+              letterSpacing: "0.12em",
               touchAction: "manipulation",
               WebkitTapHighlightColor: "transparent",
-              userSelect: "none"
+              userSelect: "none",
+              background: tapPressed
+                ? "linear-gradient(135deg, #5ea9ff 0%, #3e7ed1 100%)"
+                : "linear-gradient(135deg, #4d8be0 0%, #305f9f 100%)",
+              boxShadow: tapPressed
+                ? "0 0 0 2px rgba(148,214,255,0.6), 0 3px 18px rgba(84,158,255,0.55)"
+                : "0 0 0 1px rgba(132,190,255,0.35), 0 8px 26px rgba(58,116,194,0.45)",
+              transform: tapPressed ? "scale(0.985)" : "scale(1)",
+              transition: "transform 40ms linear, box-shadow 60ms linear, background 60ms linear"
             }}
           >
             TAP
-          </Button>
+          </Box>
         </Box>
 
-        <Box sx={{ px: 0.5 }}>
+        <Box sx={{ px: 0.3 }}>
           <Slider
             min={60}
             max={200}
@@ -181,10 +241,12 @@ export default function App() {
               send({ type: "set_bpm", bpm: Array.isArray(value) ? value[0] : value })
             }
             sx={{
-              py: 1.4,
+              py: 1.1,
+              color: "#83d3ff",
               "& .MuiSlider-thumb": {
-                width: 26,
-                height: 26
+                width: 24,
+                height: 24,
+                boxShadow: "0 0 0 4px rgba(131,211,255,0.2)"
               },
               "& .MuiSlider-track, & .MuiSlider-rail": {
                 height: 8,
@@ -194,76 +256,60 @@ export default function App() {
           />
         </Box>
 
-        <Stack direction="row" spacing={1}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 0.9
+          }}
+        >
           <Button
-            fullWidth
             variant="outlined"
             onClick={() => send({ type: "resync" })}
-            sx={{ minHeight: 50, fontWeight: 700 }}
+            sx={{ minHeight: 48, fontWeight: 800, fontSize: "0.83rem" }}
           >
             RESYNC
           </Button>
           <Button
-            fullWidth
             variant="outlined"
             onClick={() => send({ type: "toggle_metronome" })}
-            sx={{ minHeight: 50, fontWeight: 700 }}
+            sx={{ minHeight: 48, fontWeight: 800, fontSize: "0.83rem" }}
           >
             METRO TOGGLE
           </Button>
-        </Stack>
-
-        <Stack direction="row" spacing={1}>
           <Button
-            fullWidth
             variant={state.round_whole_bpm ? "contained" : "outlined"}
             onClick={() => send({ type: "toggle_bpm_rounding" })}
-            sx={{ minHeight: 50, fontWeight: 700 }}
+            sx={{ minHeight: 48, fontWeight: 800, fontSize: "0.83rem", gridColumn: "1 / -1" }}
           >
             ROUND BPM
           </Button>
-        </Stack>
+        </Box>
 
-        <Stack direction="row" spacing={1}>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={() => send({ type: "nudge", delta: -1.0 })}
-            sx={{ minHeight: 50, fontWeight: 700 }}
-          >
-            -1.0
-          </Button>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={() => send({ type: "nudge", delta: -0.1 })}
-            sx={{ minHeight: 50, fontWeight: 700 }}
-          >
-            -0.1
-          </Button>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={() => send({ type: "nudge", delta: +0.1 })}
-            sx={{ minHeight: 50, fontWeight: 700 }}
-          >
-            +0.1
-          </Button>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={() => send({ type: "nudge", delta: +1.0 })}
-            sx={{ minHeight: 50, fontWeight: 700 }}
-          >
-            +1.0
-          </Button>
-        </Stack>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${nudgeButtons.length}, minmax(0, 1fr))`,
+            gap: 0.9
+          }}
+        >
+          {nudgeButtons.map((item) => (
+            <Button
+              key={item.label}
+              variant="outlined"
+              onClick={() => send({ type: "nudge", delta: item.delta })}
+              sx={{ minHeight: 48, fontWeight: 800 }}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </Box>
 
         <Box
           sx={{
             display: "grid",
             gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 1
+            gap: 0.9
           }}
         >
           {presets.map((bpm) => (
@@ -271,7 +317,7 @@ export default function App() {
               key={bpm}
               variant="outlined"
               onClick={() => send({ type: "preset", bpm })}
-              sx={{ minHeight: 52, fontWeight: 800 }}
+              sx={{ minHeight: 50, fontWeight: 900 }}
             >
               {bpm}
             </Button>

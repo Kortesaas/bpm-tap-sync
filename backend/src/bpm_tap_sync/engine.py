@@ -83,7 +83,7 @@ class TempoEngine:
 
         self._task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()
-        self._bpm_step = 0.1
+        self._bpm_step = 1.0
 
     @staticmethod
     def _clamp(value: float, minimum: float, maximum: float) -> float:

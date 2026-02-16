@@ -37,7 +37,7 @@ outputs = Outputs(
 
 clients: set[WebSocket] = set()
 metronome_enabled = False
-round_whole_bpm = False
+round_whole_bpm = True
 control_lock = asyncio.Lock()
 
 
@@ -93,6 +93,7 @@ engine = TempoEngine(on_state=_broadcast_state, on_bpm=_on_bpm, on_beat=_on_beat
 
 @app.on_event("startup")
 async def _startup():
+    await engine.set_whole_bpm_rounding(round_whole_bpm)
     await engine.start()
 
 
