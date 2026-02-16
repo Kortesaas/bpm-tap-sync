@@ -179,6 +179,7 @@ async def ws_endpoint(ws: WebSocket):
                 elif t == "preset":
                     await engine.set_bpm(float(msg["bpm"]))
                 elif t == "resync":
+                    await engine.resync()
                     outputs.resync()
                 elif t == "toggle_metronome":
                     async with control_lock:
@@ -210,6 +211,12 @@ async def ws_endpoint(ws: WebSocket):
                     target = _coerce_output_target(msg["target"])
                     enabled = _coerce_bool(msg["enabled"])
                     outputs.set_output_enabled(target, enabled)
+                    if enabled:
+                        current_state = await engine.get_state()
+                        # Immediately push current tempo so newly activated targets sync at once.
+                        outputs.set_bpm(current_state.bpm)
+                        if target == "resolume":
+                            outputs.set_metronome(metronome_enabled)
                     await _broadcast_settings_async()
                 elif t == "set_output_target":
                     target = _coerce_output_target(msg["target"])

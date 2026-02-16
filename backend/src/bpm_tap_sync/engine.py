@@ -136,6 +136,15 @@ class TempoEngine:
         self._on_bpm(bpm)
         self._on_state(snapshot)
 
+    async def resync(self):
+        async with self._lock:
+            # Restart beat phase from beat 1 while keeping current bar count.
+            self.state.beat = 1
+            self.state.last_beat_ts = time.monotonic()
+            snapshot = self._snapshot_locked()
+        self._on_beat(snapshot.beat, snapshot.bar)
+        self._on_state(snapshot)
+
     async def set_whole_bpm_rounding(self, enabled: bool):
         async with self._lock:
             self._bpm_step = 1.0 if enabled else 0.1

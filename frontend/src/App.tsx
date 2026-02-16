@@ -77,6 +77,8 @@ export default function App() {
     }
   });
   const [tapPressed, setTapPressed] = useState(false);
+  const [resyncPressed, setResyncPressed] = useState(false);
+  const [metroPressed, setMetroPressed] = useState(false);
   const [bpmEntry, setBpmEntry] = useState("120");
   const [connected, setConnected] = useState(false);
 
@@ -88,6 +90,8 @@ export default function App() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const tapReleaseTimerRef = useRef<number | null>(null);
+  const resyncReleaseTimerRef = useRef<number | null>(null);
+  const metroReleaseTimerRef = useRef<number | null>(null);
   const entryDirtyRef = useRef(false);
 
   const nudgeButtons = useMemo(
@@ -161,6 +165,12 @@ export default function App() {
       if (tapReleaseTimerRef.current !== null) {
         window.clearTimeout(tapReleaseTimerRef.current);
       }
+      if (resyncReleaseTimerRef.current !== null) {
+        window.clearTimeout(resyncReleaseTimerRef.current);
+      }
+      if (metroReleaseTimerRef.current !== null) {
+        window.clearTimeout(metroReleaseTimerRef.current);
+      }
       wsRef.current?.close();
     };
   }, []);
@@ -188,7 +198,31 @@ export default function App() {
     tapReleaseTimerRef.current = window.setTimeout(() => {
       setTapPressed(false);
       tapReleaseTimerRef.current = null;
-    }, 55);
+    }, 42);
+  };
+
+  const triggerResync = () => {
+    setResyncPressed(true);
+    send({ type: "resync" });
+    if (resyncReleaseTimerRef.current !== null) {
+      window.clearTimeout(resyncReleaseTimerRef.current);
+    }
+    resyncReleaseTimerRef.current = window.setTimeout(() => {
+      setResyncPressed(false);
+      resyncReleaseTimerRef.current = null;
+    }, 160);
+  };
+
+  const triggerMetroToggle = () => {
+    setMetroPressed(true);
+    send({ type: "toggle_metronome" });
+    if (metroReleaseTimerRef.current !== null) {
+      window.clearTimeout(metroReleaseTimerRef.current);
+    }
+    metroReleaseTimerRef.current = window.setTimeout(() => {
+      setMetroPressed(false);
+      metroReleaseTimerRef.current = null;
+    }, 160);
   };
 
   const setEntryFromDigits = (nextRaw: string) => {
@@ -293,36 +327,50 @@ export default function App() {
             <Stack direction="row" spacing={0.6} alignItems="center">
               <Box
                 sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  bgcolor: connected ? "#36d77e" : "#ff6961",
-                  boxShadow: connected ? "0 0 8px #36d77e" : "0 0 8px #ff6961"
+                  px: 0.7,
+                  py: 0.2,
+                  borderRadius: 99,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.6,
+                  border: "1px solid #3c4558",
+                  bgcolor: "#111723"
                 }}
-              />
-              <Typography sx={{ fontSize: 11, opacity: 0.85, fontWeight: 700 }}>
-                {connected ? "CONNECTED" : "OFFLINE"}
-              </Typography>
+              >
+                <Box
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    bgcolor: connected ? "#36d77e" : "#ff6961",
+                    boxShadow: connected ? "0 0 8px #36d77e" : "0 0 8px #ff6961"
+                  }}
+                />
+                <Typography sx={{ fontSize: 10, opacity: 0.9, fontWeight: 700 }}>
+                  {connected ? "ONLINE" : "OFFLINE"}
+                </Typography>
+              </Box>
+              <Button
+                variant={view === "settings" ? "contained" : "outlined"}
+                onClick={() => setView((prev) => (prev === "settings" ? "live" : "settings"))}
+                sx={{
+                  minWidth: 34,
+                  width: 34,
+                  height: 34,
+                  p: 0,
+                  borderRadius: 1,
+                  borderColor: "#4a5469",
+                  bgcolor: view === "settings" ? "#6a58e5" : "#111723",
+                  "&:hover": { bgcolor: view === "settings" ? "#5d4dcc" : "#171f2d" }
+                }}
+              >
+                <Box sx={{ width: 16, display: "grid", gap: 0.35 }}>
+                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: "#e5ecff", width: "100%" }} />
+                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: "#e5ecff", width: "72%", justifySelf: "end" }} />
+                  <Box sx={{ height: 2, borderRadius: 2, bgcolor: "#e5ecff", width: "86%" }} />
+                </Box>
+              </Button>
             </Stack>
-          </Stack>
-
-          <Stack direction="row" spacing={0.7}>
-            <Button
-              fullWidth
-              variant={view === "live" ? "contained" : "outlined"}
-              onClick={() => setView("live")}
-              sx={{ minHeight: 36, fontWeight: 800 }}
-            >
-              LIVE
-            </Button>
-            <Button
-              fullWidth
-              variant={view === "settings" ? "contained" : "outlined"}
-              onClick={() => setView("settings")}
-              sx={{ minHeight: 36, fontWeight: 800 }}
-            >
-              SETTINGS
-            </Button>
           </Stack>
 
           <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden" }}>
@@ -391,8 +439,9 @@ export default function App() {
                       boxShadow: tapPressed
                         ? "inset 0 0 0 2px #94c9ff, 0 1px 8px rgba(37,145,255,0.35)"
                         : "inset 0 0 0 1px rgba(255,255,255,0.15), 0 8px 20px rgba(0,0,0,0.32)",
-                      transform: tapPressed ? "scale(0.985)" : "scale(1)",
-                      transition: "transform 35ms linear, background-color 55ms linear, box-shadow 55ms linear"
+                      transform: tapPressed ? "scale(0.983)" : "scale(1)",
+                      transition: "transform 28ms linear, background-color 45ms linear, box-shadow 45ms linear",
+                      willChange: "transform, background-color, box-shadow"
                     }}
                   >
                     TAP
@@ -418,26 +467,34 @@ export default function App() {
 
                 <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 0.7 }}>
                   <Button
-                    variant="outlined"
-                    onClick={() => send({ type: "resync" })}
-                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
+                    variant={resyncPressed ? "contained" : "outlined"}
+                    onClick={triggerResync}
+                    sx={{
+                      minHeight: 78,
+                      minWidth: 0,
+                      fontWeight: 800,
+                      borderColor: "#4a5469",
+                      color: "#e5ecff",
+                      bgcolor: resyncPressed ? "#3478f6" : "transparent",
+                      "&:hover": { bgcolor: resyncPressed ? "#2c68d6" : "rgba(255,255,255,0.04)" }
+                    }}
                   >
                     RESYNC
                   </Button>
                   <Button
-                    variant={state.metronome ? "contained" : "outlined"}
-                    onClick={() => send({ type: "toggle_metronome" })}
+                    variant={metroPressed ? "contained" : "outlined"}
+                    onClick={triggerMetroToggle}
                     sx={{
-                      minHeight: 40,
+                      minHeight: 78,
                       minWidth: 0,
-                      fontWeight: 700,
+                      fontWeight: 800,
                       borderColor: "#4a5469",
-                      color: state.metronome ? "#ffffff" : "#e5ecff",
-                      bgcolor: state.metronome ? "#18a367" : "transparent",
-                      "&:hover": { bgcolor: state.metronome ? "#168d5a" : "rgba(255,255,255,0.04)" }
+                      color: "#e5ecff",
+                      bgcolor: metroPressed ? "#18a367" : "transparent",
+                      "&:hover": { bgcolor: metroPressed ? "#168d5a" : "rgba(255,255,255,0.04)" }
                     }}
                   >
-                    METRO {state.metronome ? "ON" : "OFF"}
+                    METRO TOGGLE
                   </Button>
                 </Box>
 
@@ -467,15 +524,16 @@ export default function App() {
 
                   <Box
                     sx={{
-                      minHeight: 38,
+                      minHeight: 42,
                       px: 1,
                       mb: 0.7,
                       borderRadius: 1.3,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      bgcolor: "#0f141f",
-                      border: "1px solid #2a3140"
+                      bgcolor: "#111b2a",
+                      border: "1px solid #4b5a79",
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)"
                     }}
                   >
                     <Typography sx={{ fontSize: 22, fontWeight: 800 }}>{bpmEntry || "---"}</Typography>
@@ -488,24 +546,79 @@ export default function App() {
                         key={digit}
                         variant="outlined"
                         onPointerDown={() => appendDigit(digit)}
-                        sx={{ minHeight: 42, minWidth: 0, fontSize: "1rem", fontWeight: 800, borderColor: "#4a5469", color: "#f1f5ff" }}
+                        sx={{
+                          minHeight: 48,
+                          minWidth: 0,
+                          fontSize: "1.06rem",
+                          fontWeight: 900,
+                          borderColor: "#6d81a8",
+                          color: "#ffffff",
+                          bgcolor: "#1a2334",
+                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+                          "&:hover": { bgcolor: "#1f2b40" }
+                        }}
                       >
                         {digit}
                       </Button>
                     ))}
-                    <Button variant="outlined" onPointerDown={clearEntry} sx={{ minHeight: 42, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#f1f5ff" }}>
+                    <Button
+                      variant="outlined"
+                      onPointerDown={clearEntry}
+                      sx={{
+                        minHeight: 48,
+                        minWidth: 0,
+                        fontWeight: 800,
+                        borderColor: "#6d81a8",
+                        color: "#ffffff",
+                        bgcolor: "#1a2334",
+                        "&:hover": { bgcolor: "#1f2b40" }
+                      }}
+                    >
                       CLR
                     </Button>
-                    <Button variant="outlined" onPointerDown={() => appendDigit("0")} sx={{ minHeight: 42, minWidth: 0, fontSize: "1rem", fontWeight: 800, borderColor: "#4a5469", color: "#f1f5ff" }}>
+                    <Button
+                      variant="outlined"
+                      onPointerDown={() => appendDigit("0")}
+                      sx={{
+                        minHeight: 48,
+                        minWidth: 0,
+                        fontSize: "1.06rem",
+                        fontWeight: 900,
+                        borderColor: "#6d81a8",
+                        color: "#ffffff",
+                        bgcolor: "#1a2334",
+                        "&:hover": { bgcolor: "#1f2b40" }
+                      }}
+                    >
                       0
                     </Button>
-                    <Button variant="outlined" onPointerDown={backspaceEntry} sx={{ minHeight: 42, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#f1f5ff" }}>
+                    <Button
+                      variant="outlined"
+                      onPointerDown={backspaceEntry}
+                      sx={{
+                        minHeight: 48,
+                        minWidth: 0,
+                        fontWeight: 800,
+                        borderColor: "#6d81a8",
+                        color: "#ffffff",
+                        bgcolor: "#1a2334",
+                        "&:hover": { bgcolor: "#1f2b40" }
+                      }}
+                    >
                       DEL
                     </Button>
                     <Button
                       variant="contained"
                       onPointerDown={applyEntry}
-                      sx={{ minHeight: 44, minWidth: 0, fontWeight: 800, gridColumn: "1 / -1", bgcolor: "#3478f6" }}
+                      sx={{
+                        minHeight: 50,
+                        minWidth: 0,
+                        fontWeight: 900,
+                        fontSize: "0.98rem",
+                        letterSpacing: "0.03em",
+                        gridColumn: "1 / -1",
+                        bgcolor: "#3478f6"
+                      }}
                     >
                       SET BPM
                     </Button>
@@ -514,6 +627,9 @@ export default function App() {
               </Stack>
             ) : (
               <Stack spacing={1.1} sx={{ minWidth: 0, pb: 0.4 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", opacity: 0.85 }}>
+                  SETTINGS
+                </Typography>
                 <Box
                   sx={{
                     p: 1,

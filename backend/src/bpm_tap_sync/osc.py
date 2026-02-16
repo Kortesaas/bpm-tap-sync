@@ -15,6 +15,19 @@ def _bpm_to_resolume_tempo_norm(bpm: float) -> float:
     return (bounded - min_bpm) / (max_bpm - min_bpm)
 
 
+def _compact_bpm_number(bpm: float) -> int | float:
+    value = round(float(bpm), 3)
+    as_int = round(value)
+    if abs(value - as_int) < 1e-6:
+        return int(as_int)
+    return value
+
+
+def _compact_bpm_text(bpm: float) -> str:
+    value = round(float(bpm), 3)
+    return f"{value:.3f}".rstrip("0").rstrip(".")
+
+
 class OscOut:
     def __init__(self, ip: str, port: int, enabled: bool = True):
         self.ip = ip
@@ -84,15 +97,17 @@ class Outputs:
         }
 
     def set_bpm(self, bpm: float):
+        bpm_value = _compact_bpm_number(bpm)
+
         # MA3: command line via OSC.
         # You will likely change this string to match your showfile.
-        self.ma3.send("/cmd", f"Master 3.1 At BPM {bpm:.1f}")
+        self.ma3.send("/cmd", f"Master 3.1 At BPM {_compact_bpm_text(float(bpm_value))}")
 
         # Resolume: composition tempo expects normalized 0.0..1.0.
         self.resolume.send("/composition/tempocontroller/tempo", _bpm_to_resolume_tempo_norm(bpm))
 
         # HeavyM: your own mapping
-        self.heavym.send("/bpm-tap-sync/bpm", float(bpm))
+        self.heavym.send("/bpm-tap-sync/bpm", bpm_value)
 
     def resync(self):
         self.resolume.send("/composition/tempocontroller/resync", 1)
