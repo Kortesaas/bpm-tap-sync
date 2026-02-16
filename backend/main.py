@@ -36,6 +36,17 @@ outputs = Outputs(
 )
 
 clients: set[WebSocket] = set()
+metronome_enabled = False
+round_whole_bpm = False
+control_lock = asyncio.Lock()
+
+
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    raise ValueError("Expected boolean or 0/1")
 
 
 def _state_payload(state: TempoState) -> dict[str, Any]:
@@ -45,6 +56,8 @@ def _state_payload(state: TempoState) -> dict[str, Any]:
         "beat": state.beat,
         "bar": state.bar,
         "running": state.running,
+        "metronome": metronome_enabled,
+        "round_whole_bpm": round_whole_bpm,
     }
 
 
@@ -90,6 +103,8 @@ async def health():
 
 @app.websocket("/ws")
 async def ws_endpoint(ws: WebSocket):
+    global metronome_enabled, round_whole_bpm
+
     await ws.accept()
     clients.add(ws)
 
@@ -120,6 +135,29 @@ async def ws_endpoint(ws: WebSocket):
                     await engine.nudge(float(msg.get("delta", 0.0)))
                 elif t == "preset":
                     await engine.set_bpm(float(msg["bpm"]))
+                elif t == "resync":
+                    outputs.resync()
+                elif t == "toggle_metronome":
+                    async with control_lock:
+                        metronome_enabled = not metronome_enabled
+                        enabled = metronome_enabled
+                    outputs.set_metronome(enabled)
+                    s = await engine.get_state()
+                    await _broadcast_state_async(s)
+                elif t == "set_metronome":
+                    enabled = _coerce_bool(msg["enabled"])
+                    async with control_lock:
+                        metronome_enabled = enabled
+                    outputs.set_metronome(enabled)
+                    s = await engine.get_state()
+                    await _broadcast_state_async(s)
+                elif t == "toggle_bpm_rounding":
+                    async with control_lock:
+                        round_whole_bpm = not round_whole_bpm
+                        enabled = round_whole_bpm
+                    await engine.set_whole_bpm_rounding(enabled)
+                    s = await engine.get_state()
+                    await _broadcast_state_async(s)
                 else:
                     await ws.send_json({"type": "error", "message": "Unknown message type"})
             except (KeyError, TypeError, ValueError):

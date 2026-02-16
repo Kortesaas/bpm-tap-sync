@@ -7,6 +7,8 @@ type StateMsg = {
   beat: number;
   bar: number;
   running: boolean;
+  metronome: boolean;
+  round_whole_bpm: boolean;
 };
 
 type ErrorMsg = {
@@ -20,7 +22,10 @@ type ControlMsg =
   | { type: "tap" }
   | { type: "set_bpm"; bpm: number }
   | { type: "nudge"; delta: number }
-  | { type: "preset"; bpm: number };
+  | { type: "preset"; bpm: number }
+  | { type: "resync" }
+  | { type: "toggle_metronome" }
+  | { type: "toggle_bpm_rounding" };
 
 function wsUrl() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
@@ -33,7 +38,9 @@ export default function App() {
     bpm: 120,
     beat: 1,
     bar: 1,
-    running: true
+    running: true,
+    metronome: false,
+    round_whole_bpm: false
   });
   const [connected, setConnected] = useState(false);
 
@@ -114,7 +121,7 @@ export default function App() {
             lineHeight: 1
           }}
         >
-          {state.bpm.toFixed(1)}
+          {state.round_whole_bpm ? state.bpm.toFixed(0) : state.bpm.toFixed(1)}
         </Typography>
 
         <Stack
@@ -142,29 +149,32 @@ export default function App() {
           ))}
         </Stack>
 
-        <Button
-          variant="contained"
-          onPointerDown={handleTap}
-          sx={{
-            width: "100%",
-            minHeight: 96,
-            borderRadius: 4,
-            fontSize: "1.8rem",
-            fontWeight: 900,
-            letterSpacing: "0.1em",
-            touchAction: "manipulation",
-            WebkitTapHighlightColor: "transparent",
-            userSelect: "none"
-          }}
-        >
-          TAP
-        </Button>
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <Button
+            variant="contained"
+            onPointerDown={handleTap}
+            sx={{
+              width: "min(72vw, 260px)",
+              aspectRatio: "1 / 1",
+              minHeight: 220,
+              borderRadius: 3,
+              fontSize: "2rem",
+              fontWeight: 900,
+              letterSpacing: "0.1em",
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent",
+              userSelect: "none"
+            }}
+          >
+            TAP
+          </Button>
+        </Box>
 
         <Box sx={{ px: 0.5 }}>
           <Slider
             min={60}
             max={200}
-            step={0.1}
+            step={state.round_whole_bpm ? 1 : 0.1}
             value={state.bpm}
             valueLabelDisplay="auto"
             onChange={(_, value) =>
@@ -183,6 +193,36 @@ export default function App() {
             }}
           />
         </Box>
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => send({ type: "resync" })}
+            sx={{ minHeight: 50, fontWeight: 700 }}
+          >
+            RESYNC
+          </Button>
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => send({ type: "toggle_metronome" })}
+            sx={{ minHeight: 50, fontWeight: 700 }}
+          >
+            METRO TOGGLE
+          </Button>
+        </Stack>
+
+        <Stack direction="row" spacing={1}>
+          <Button
+            fullWidth
+            variant={state.round_whole_bpm ? "contained" : "outlined"}
+            onClick={() => send({ type: "toggle_bpm_rounding" })}
+            sx={{ minHeight: 50, fontWeight: 700 }}
+          >
+            ROUND BPM
+          </Button>
+        </Stack>
 
         <Stack direction="row" spacing={1}>
           <Button

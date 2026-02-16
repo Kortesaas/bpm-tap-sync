@@ -83,10 +83,14 @@ class TempoEngine:
 
         self._task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()
+        self._bpm_step = 0.1
 
     @staticmethod
     def _clamp(value: float, minimum: float, maximum: float) -> float:
         return max(minimum, min(maximum, value))
+
+    def _quantize(self, bpm: float) -> float:
+        return round_bpm(bpm, self._bpm_step)
 
     def _snapshot_locked(self) -> TempoState:
         return TempoState(
@@ -104,6 +108,7 @@ class TempoEngine:
     async def set_bpm(self, bpm: float):
         async with self._lock:
             bpm = self._clamp(float(bpm), self.MIN_BPM, self.MAX_BPM)
+            bpm = self._quantize(bpm)
             self.state.bpm = bpm
             snapshot = self._snapshot_locked()
         self._on_bpm(bpm)
@@ -113,7 +118,7 @@ class TempoEngine:
         ts = time.monotonic()
         bpm = self.tap.add_tap(ts)
         if bpm is not None:
-            await self.set_bpm(round_bpm(bpm, 0.1))
+            await self.set_bpm(bpm)
             return True
 
         # Broadcast unchanged state so clients stay in sync with tap activity.
@@ -124,7 +129,17 @@ class TempoEngine:
 
     async def nudge(self, delta: float):
         async with self._lock:
-            self.state.bpm = self._clamp(self.state.bpm + float(delta), self.MIN_BPM, self.MAX_BPM)
+            next_bpm = self._clamp(self.state.bpm + float(delta), self.MIN_BPM, self.MAX_BPM)
+            self.state.bpm = self._quantize(next_bpm)
+            bpm = self.state.bpm
+            snapshot = self._snapshot_locked()
+        self._on_bpm(bpm)
+        self._on_state(snapshot)
+
+    async def set_whole_bpm_rounding(self, enabled: bool):
+        async with self._lock:
+            self._bpm_step = 1.0 if enabled else 0.1
+            self.state.bpm = self._quantize(self._clamp(self.state.bpm, self.MIN_BPM, self.MAX_BPM))
             bpm = self.state.bpm
             snapshot = self._snapshot_locked()
         self._on_bpm(bpm)
