@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # OSC targets (defaults to localhost)
     ma3_ip: str = "127.0.0.1"
     ma3_port: int = 8001
+    ma3_bpm_master: str = "3.16"
 
     resolume_ip: str = "127.0.0.1"
     resolume_port: int = 7000

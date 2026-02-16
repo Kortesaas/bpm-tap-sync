@@ -93,6 +93,7 @@ class Outputs:
         ma3: OscOut,
         resolume: OscOut,
         heavym: OscOut,
+        ma3_bpm_master: str = "3.16",
         heavym_bpm_address: str = "/tempo/bpm",
         heavym_resync_address: str = "/tempo/resync",
         heavym_bpm_min: float = 20.0,
@@ -103,6 +104,7 @@ class Outputs:
         self.ma3 = ma3
         self.resolume = resolume
         self.heavym = heavym
+        self.ma3_bpm_master = str(ma3_bpm_master).strip() or "3.16"
         self.heavym_bpm_address = heavym_bpm_address
         self.heavym_resync_address = heavym_resync_address
         self.heavym_bpm_min = float(heavym_bpm_min)
@@ -201,9 +203,9 @@ class Outputs:
         raise ValueError(f"Unknown OSC target: {name}")
 
     def _send_ma3_bpm(self, bpm_value: int | float):
-        # MA3: command line via OSC.
-        # You will likely change this string to match your showfile.
-        self.ma3.send("/cmd", f"Master 3.1 At BPM {_compact_bpm_text(float(bpm_value))}")
+        # grandMA3 onPC tempo control via command string on /cmd.
+        command = f"Master {self.ma3_bpm_master} At BPM {_compact_bpm_text(float(bpm_value))}"
+        self.ma3.send("/cmd", command)
 
     def _send_resolume_bpm(self, bpm: float):
         # Resolume: composition tempo expects normalized 0.0..1.0.

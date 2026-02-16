@@ -34,6 +34,7 @@ outputs = Outputs(
     ma3=OscOut(settings.ma3_ip, settings.ma3_port),
     resolume=OscOut(settings.resolume_ip, settings.resolume_port),
     heavym=OscOut(settings.heavym_ip, settings.heavym_port),
+    ma3_bpm_master=settings.ma3_bpm_master,
     heavym_bpm_address=settings.heavym_bpm_address,
     heavym_resync_address=settings.heavym_resync_address,
     heavym_bpm_min=settings.heavym_bpm_min,
@@ -201,6 +202,10 @@ async def ws_endpoint(ws: WebSocket):
                 elif t == "resync":
                     await engine.resync()
                     outputs.resync()
+                elif t == "sync_bpm":
+                    # Explicit manual sync: send current BPM to MA3 only.
+                    current_state = await engine.get_state()
+                    outputs.set_bpm_for_target("ma3", current_state.bpm)
                 elif t == "toggle_metronome":
                     async with control_lock:
                         metronome_enabled = not metronome_enabled

@@ -109,6 +109,7 @@ export default function App() {
     }
   });
   const [tapPressed, setTapPressed] = useState(false);
+  const [tapPulseId, setTapPulseId] = useState(0);
   const [resyncPressed, setResyncPressed] = useState(false);
   const [metroPressed, setMetroPressed] = useState(false);
   const [bpmEntry, setBpmEntry] = useState("120");
@@ -129,6 +130,7 @@ export default function App() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const tapReleaseTimerRef = useRef<number | null>(null);
+  const lastTapSentAtRef = useRef(0);
   const resyncReleaseTimerRef = useRef<number | null>(null);
   const metroReleaseTimerRef = useRef<number | null>(null);
   const entryDirtyRef = useRef(false);
@@ -235,16 +237,43 @@ export default function App() {
     setTapPressed(false);
   };
 
-  const handleTapDown = () => {
-    setTapPressed(true);
-    send({ type: "tap" });
+  const scheduleTapVisualRelease = (ms: number) => {
     if (tapReleaseTimerRef.current !== null) {
       window.clearTimeout(tapReleaseTimerRef.current);
     }
     tapReleaseTimerRef.current = window.setTimeout(() => {
       setTapPressed(false);
       tapReleaseTimerRef.current = null;
-    }, 42);
+    }, ms);
+  };
+
+  const emitTap = () => {
+    const now = performance.now();
+    if (now - lastTapSentAtRef.current < 22) return;
+    lastTapSentAtRef.current = now;
+    send({ type: "tap" });
+    setTapPulseId((prev) => prev + 1);
+  };
+
+  const handleTapDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Ignore unsupported capture errors in older browsers.
+    }
+    setTapPressed(true);
+    emitTap();
+    scheduleTapVisualRelease(54);
+  };
+
+  const handleTapKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.repeat) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    setTapPressed(true);
+    emitTap();
+    scheduleTapVisualRelease(54);
   };
 
   const triggerResync = () => {
@@ -535,10 +564,13 @@ export default function App() {
                     component="button"
                     type="button"
                     onPointerDown={handleTapDown}
+                    onKeyDown={handleTapKeyDown}
                     onPointerUp={releaseTapVisual}
                     onPointerLeave={releaseTapVisual}
                     onPointerCancel={releaseTapVisual}
                     sx={{
+                      position: "relative",
+                      overflow: "hidden",
                       width: "min(56vw, 200px)",
                       aspectRatio: "1 / 1",
                       border: "none",
@@ -553,13 +585,28 @@ export default function App() {
                       userSelect: "none",
                       background: tapPressed ? "#2591ff" : "#3478f6",
                       boxShadow: tapPressed
-                        ? "inset 0 0 0 2px #94c9ff, 0 1px 8px rgba(37,145,255,0.35)"
-                        : "inset 0 0 0 1px rgba(255,255,255,0.15), 0 8px 20px rgba(0,0,0,0.32)",
-                      transform: tapPressed ? "scale(0.983)" : "scale(1)",
-                      transition: "transform 28ms linear, background-color 45ms linear, box-shadow 45ms linear",
+                        ? "inset 0 0 0 2px #b5dbff, 0 1px 10px rgba(37,145,255,0.42)"
+                        : "inset 0 0 0 1px rgba(255,255,255,0.18), 0 8px 20px rgba(0,0,0,0.32)",
+                      transform: tapPressed ? "scale(0.976)" : "scale(1)",
+                      transition: "transform 24ms linear, background-color 42ms linear, box-shadow 42ms linear",
+                      "@keyframes tapPulseRing": {
+                        "0%": { transform: "scale(0.88)", opacity: 0.55 },
+                        "100%": { transform: "scale(1.08)", opacity: 0 }
+                      },
                       willChange: "transform, background-color, box-shadow"
                     }}
                   >
+                    <Box
+                      key={tapPulseId}
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        borderRadius: "inherit",
+                        border: "2px solid rgba(215,237,255,0.82)",
+                        pointerEvents: "none",
+                        animation: "tapPulseRing 190ms ease-out"
+                      }}
+                    />
                     TAP
                   </Box>
                 </Box>

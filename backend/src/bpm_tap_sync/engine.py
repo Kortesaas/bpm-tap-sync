@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from dataclasses import dataclass, field
 from statistics import median
@@ -19,11 +20,13 @@ class TempoState:
 @dataclass
 class TapTracker:
     taps: list[float] = field(default_factory=list)
-    max_taps: int = 8
+    max_taps: int = 12
     reset_gap_s: float = 2.5
     min_interval_s: float = 0.2
     max_interval_s: float = 3.0
-    tolerance: float = 0.25
+    tolerance: float = 0.22
+    recent_window: int = 6
+    last_estimated_bpm: Optional[float] = None
 
     def add_tap(self, ts: float) -> Optional[float]:
         if self.taps and ts <= self.taps[-1]:
@@ -32,12 +35,13 @@ class TapTracker:
         # Restart estimation after a long pause between taps.
         if self.taps and (ts - self.taps[-1]) > self.reset_gap_s:
             self.taps = [ts]
+            self.last_estimated_bpm = None
             return None
 
         self.taps.append(ts)
         self.taps = self.taps[-self.max_taps:]
 
-        # Need at least 3 taps for a stable estimate
+        # Need at least 3 taps (2 intervals) for a stable estimate.
         if len(self.taps) < 3:
             return None
 
@@ -46,23 +50,55 @@ class TapTracker:
         if len(intervals) < 2:
             return None
 
-        m = median(intervals)
-        if m <= 0.0:
+        center = median(intervals)
+        if center <= 0.0:
             return None
 
-        # Outlier reject: keep intervals within +/-tolerance of median
-        good = [x for x in intervals if abs(x - m) <= (self.tolerance * m)]
+        # Robust outlier rejection: median + MAD band first.
+        deviations = [abs(x - center) for x in intervals]
+        mad = median(deviations)
+
+        if mad > 1e-9:
+            mad_band = 2.8 * mad
+            good = [x for x in intervals if abs(x - center) <= mad_band]
+        else:
+            good = intervals[:]
+
+        # Fallback band around median for near-constant taps.
+        if len(good) < 2:
+            ratio_band = self.tolerance * center
+            good = [x for x in intervals if abs(x - center) <= ratio_band]
         if len(good) < 2:
             return None
 
-        bpm = 60.0 / median(good)
+        # Use a recency-weighted average to reduce jitter while adapting quickly.
+        recent = good[-self.recent_window :]
+        weights = list(range(1, len(recent) + 1))
+        weighted_interval = sum(v * w for v, w in zip(recent, weights)) / sum(weights)
+        if weighted_interval <= 0.0:
+            return None
+
+        bpm = 60.0 / weighted_interval
         if not (20.0 <= bpm <= 300.0):
             return None
+
+        # Light temporal smoothing to stabilize display without lagging tempo changes too much.
+        if self.last_estimated_bpm is not None:
+            drift = abs(bpm - self.last_estimated_bpm) / max(self.last_estimated_bpm, 1e-6)
+            alpha = 0.45 if drift < 0.08 else (0.6 if drift < 0.2 else 0.8)
+            bpm = (1.0 - alpha) * self.last_estimated_bpm + alpha * bpm
+
+        self.last_estimated_bpm = bpm
         return bpm
 
 
 def round_bpm(bpm: float, step: float = 0.1) -> float:
-    return round(bpm / step) * step
+    # Use half-up behavior for predictable BPM rounding.
+    if step <= 0:
+        return float(bpm)
+    scaled = float(bpm) / float(step)
+    rounded = math.floor(scaled + 0.5)
+    return round(rounded * float(step), 6)
 
 
 class TempoEngine:
