@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 from pathlib import Path
 from typing import Any
@@ -39,6 +40,7 @@ clients: set[WebSocket] = set()
 metronome_enabled = False
 round_whole_bpm = True
 control_lock = asyncio.Lock()
+OSC_TARGETS = {"ma3", "resolume", "heavym"}
 
 
 def _coerce_bool(value: Any) -> bool:
@@ -47,6 +49,30 @@ def _coerce_bool(value: Any) -> bool:
     if isinstance(value, int) and value in (0, 1):
         return bool(value)
     raise ValueError("Expected boolean or 0/1")
+
+
+def _coerce_output_target(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("Target must be a string")
+    target = value.strip().lower()
+    if target not in OSC_TARGETS:
+        raise ValueError(f"Unknown OSC target: {target}")
+    return target
+
+
+def _coerce_ip(value: Any) -> str:
+    if not isinstance(value, str):
+        raise ValueError("IP must be a string")
+    ip = value.strip()
+    ipaddress.ip_address(ip)
+    return ip
+
+
+def _coerce_port(value: Any) -> int:
+    port = int(value)
+    if not (1 <= port <= 65535):
+        raise ValueError("Port must be in range 1..65535")
+    return port
 
 
 def _state_payload(state: TempoState) -> dict[str, Any]:
@@ -61,8 +87,15 @@ def _state_payload(state: TempoState) -> dict[str, Any]:
     }
 
 
-async def _broadcast_state_async(state: TempoState):
-    payload = _state_payload(state)
+def _settings_payload() -> dict[str, Any]:
+    return {
+        "type": "settings",
+        "round_whole_bpm": round_whole_bpm,
+        "outputs": outputs.settings_snapshot(),
+    }
+
+
+async def _broadcast_payload(payload: dict[str, Any]):
     stale: list[WebSocket] = []
 
     for ws in list(clients):
@@ -73,6 +106,14 @@ async def _broadcast_state_async(state: TempoState):
 
     for ws in stale:
         clients.discard(ws)
+
+
+async def _broadcast_state_async(state: TempoState):
+    await _broadcast_payload(_state_payload(state))
+
+
+async def _broadcast_settings_async():
+    await _broadcast_payload(_settings_payload())
 
 
 def _broadcast_state(state: TempoState):
@@ -111,6 +152,7 @@ async def ws_endpoint(ws: WebSocket):
 
     s = await engine.get_state()
     await ws.send_json(_state_payload(s))
+    await ws.send_json(_settings_payload())
 
     try:
         while True:
@@ -157,8 +199,26 @@ async def ws_endpoint(ws: WebSocket):
                         round_whole_bpm = not round_whole_bpm
                         enabled = round_whole_bpm
                     await engine.set_whole_bpm_rounding(enabled)
-                    s = await engine.get_state()
-                    await _broadcast_state_async(s)
+                    await _broadcast_settings_async()
+                elif t == "set_round_whole_bpm":
+                    enabled = _coerce_bool(msg["enabled"])
+                    async with control_lock:
+                        round_whole_bpm = enabled
+                    await engine.set_whole_bpm_rounding(enabled)
+                    await _broadcast_settings_async()
+                elif t == "set_output_enabled":
+                    target = _coerce_output_target(msg["target"])
+                    enabled = _coerce_bool(msg["enabled"])
+                    outputs.set_output_enabled(target, enabled)
+                    await _broadcast_settings_async()
+                elif t == "set_output_target":
+                    target = _coerce_output_target(msg["target"])
+                    ip = _coerce_ip(msg["ip"])
+                    port = _coerce_port(msg["port"])
+                    outputs.set_output_target(target, ip, port)
+                    await _broadcast_settings_async()
+                elif t == "get_settings":
+                    await ws.send_json(_settings_payload())
                 else:
                     await ws.send_json({"type": "error", "message": "Unknown message type"})
             except (KeyError, TypeError, ValueError):

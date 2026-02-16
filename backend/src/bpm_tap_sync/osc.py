@@ -16,12 +16,29 @@ def _bpm_to_resolume_tempo_norm(bpm: float) -> float:
 
 
 class OscOut:
-    def __init__(self, ip: str, port: int):
-        self.client = SimpleUDPClient(ip, port)
+    def __init__(self, ip: str, port: int, enabled: bool = True):
+        self.ip = ip
+        self.port = int(port)
+        self.enabled = bool(enabled)
+        self.client = SimpleUDPClient(self.ip, self.port)
+
+    def set_target(self, ip: str, port: int):
+        self.ip = ip
+        self.port = int(port)
+        self.client = SimpleUDPClient(self.ip, self.port)
+
+    def set_enabled(self, enabled: bool):
+        self.enabled = bool(enabled)
 
     def send(self, address: str, *args):
+        if not self.enabled:
+            return
         # python-osc accepts list/tuple, we pass a list for consistency
-        self.client.send_message(address, list(args))
+        try:
+            self.client.send_message(address, list(args))
+        except OSError:
+            # Ignore transient UDP errors so control loop keeps running.
+            return
 
 
 class Outputs:
@@ -39,6 +56,32 @@ class Outputs:
         self.ma3 = ma3
         self.resolume = resolume
         self.heavym = heavym
+
+    def _target(self, name: str) -> OscOut:
+        if name == "ma3":
+            return self.ma3
+        if name == "resolume":
+            return self.resolume
+        if name == "heavym":
+            return self.heavym
+        raise ValueError(f"Unknown OSC target: {name}")
+
+    def set_output_enabled(self, name: str, enabled: bool):
+        self._target(name).set_enabled(enabled)
+
+    def set_output_target(self, name: str, ip: str, port: int):
+        self._target(name).set_target(ip, int(port))
+
+    def settings_snapshot(self) -> dict[str, dict[str, object]]:
+        return {
+            "ma3": {"enabled": self.ma3.enabled, "ip": self.ma3.ip, "port": self.ma3.port},
+            "resolume": {
+                "enabled": self.resolume.enabled,
+                "ip": self.resolume.ip,
+                "port": self.resolume.port,
+            },
+            "heavym": {"enabled": self.heavym.enabled, "ip": self.heavym.ip, "port": self.heavym.port},
+        }
 
     def set_bpm(self, bpm: float):
         # MA3: command line via OSC.
