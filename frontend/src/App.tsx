@@ -501,10 +501,24 @@ export default function App() {
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: `repeat(${nudgeButtons.length}, minmax(0, 1fr))`,
+                    gridTemplateColumns: `repeat(${nudgeButtons.length + 2}, minmax(0, 1fr))`,
                     gap: 0.7
                   }}
                 >
+                  <Button
+                    variant="outlined"
+                    onClick={() => send({ type: "set_bpm", bpm: state.bpm / 2 })}
+                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
+                  >
+                    /2
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    onClick={() => send({ type: "set_bpm", bpm: state.bpm * 2 })}
+                    sx={{ minHeight: 40, minWidth: 0, fontWeight: 700, borderColor: "#4a5469", color: "#e5ecff" }}
+                  >
+                    *2
+                  </Button>
                   {nudgeButtons.map((item) => (
                     <Button
                       key={item.label}
